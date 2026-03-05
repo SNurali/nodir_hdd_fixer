@@ -1,0 +1,81 @@
+import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import * as compression from 'compression';
+import * as cookieParser from 'cookie-parser';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { AppModule } from './app.module';
+import { createLogger } from './common/logger/pino.logger';
+
+async function bootstrap() {
+    const logger = createLogger('NestApplication');
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+        logger: ['error', 'warn', 'debug', 'log', 'verbose'],
+    });
+    const configService = app.get(ConfigService);
+
+    // Cookie parsing
+    app.use(cookieParser());
+
+    // Security
+    app.use(helmet({
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: [`'self'`],
+                styleSrc: [`'self'`, `'unsafe-inline'`],
+                imgSrc: [`'self'`, 'data:', 'validator.swagger.io'],
+                scriptSrc: [`'self'`, `https:'unsafe-inline'`],
+            },
+        },
+    }));
+    app.use(compression());
+
+    // CORS
+    const webUrl = configService.get('WEB_URL', 'http://localhost:3003');
+    app.enableCors({
+        origin: [
+            webUrl,
+            'http://localhost:3003',
+            'http://127.0.0.1:3003',
+        ],
+        credentials: true,
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+        allowedHeaders: 'Content-Type,Accept,Authorization',
+        exposedHeaders: 'Set-Cookie',
+    });
+
+    // Global prefix
+    app.setGlobalPrefix('v1');
+
+    const uploadsDir = join(process.cwd(), 'uploads');
+    if (!existsSync(uploadsDir)) {
+        mkdirSync(uploadsDir, { recursive: true });
+    }
+    app.useStaticAssets(uploadsDir, { prefix: '/uploads/' });
+
+    // Swagger
+    const swaggerConfig = new DocumentBuilder()
+        .setTitle('HDD Fixer Service Center API')
+        .setDescription('API for equipment repair order management')
+        .setVersion('1.0')
+        .addBearerAuth()
+        .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+
+    const port = configService.get('APP_PORT', 3004);
+    await app.listen(port);
+    logger.log(`API running on http://localhost:${port}`);
+    logger.log(`Allowed CORS origin: ${webUrl}`);
+    logger.log(`Swagger docs at http://localhost:${port}/api/docs`);
+}
+bootstrap().catch(err => {
+    const logger = createLogger('Bootstrap');
+    logger.error('Failed to start application', { error: err });
+    process.exit(1);
+});

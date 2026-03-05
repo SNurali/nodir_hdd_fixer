@@ -1,0 +1,39 @@
+{
+  "name": "nodir-hdd-fixer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:migrate": "npm run migration:run --workspace=apps/api",
+    "db:seed": "npm run seed --workspace=apps/api",
+    "qwen": "node qwen-agent.js",
+    "qwen:interactive": "node qwen-agent.js",
+    "qwen:max": "node qwen-agent.js -m qwen-max",
+    "qwen:plus": "node qwen-agent.js -m qwen-plus",
+    "qwen:turbo": "node qwen-agent.js -m qwen-turbo",
+    "qwen:coder": "node qwen-agent.js -m qwen-coder",
+    "qwen:models": "node qwen-agent.js -l"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.4.2",
+    "axios": "^1.13.6",
+    "dotenv": "^17.3.1",
+    "readline": "^1.3.0",
+    "socket.io-client": "^4.8.3"
+  }
+}

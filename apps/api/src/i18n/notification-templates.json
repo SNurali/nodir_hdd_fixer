@@ -1,0 +1,50 @@
+{
+    "ru": {
+        "order_assigned": "Вам назначен новый заказ. Пожалуйста, проверьте панель заказов.",
+        "order_accepted": "Ваш заказ принят. Мы начнём работу в ближайшее время.",
+        "order_rejected": "К сожалению, ваш заказ отклонён. Свяжитесь с нами для уточнения.",
+        "order_completed": "Ремонт завершён! Вы можете забрать оборудование.",
+        "order_closed": "Ваш заказ закрыт. Спасибо за обращение!",
+        "order_status_changed": "Статус вашего заказа был обновлён.",
+        "order_needs_assignment": "Новый заказ ожидает назначения мастера.",
+        "price_set": "Стоимость ремонта установлена: {{amount}} UZS. Пожалуйста, подтвердите.",
+        "price_approved": "Клиент согласовал стоимость ремонта.",
+        "payment_received": "Получена оплата: {{amount}} {{currency}}."
+    },
+    "uz-cyr": {
+        "order_assigned": "Сизга янги буюртма тайинланди. Илтимос, буюртмалар панелини текширинг.",
+        "order_accepted": "Сизнинг буюртмангиз қабул қилинди.",
+        "order_rejected": "Афсуски, сизнинг буюртмангиз рад этилди.",
+        "order_completed": "Таъмирлаш тугалланди! Жиҳозингизни олишингиз мумкин.",
+        "order_closed": "Буюртмангиз ёпилди. Мурожаатингиз учун раҳмат!",
+        "order_status_changed": "Буюртмангиз ҳолати янгиланди.",
+        "order_needs_assignment": "Янги буюртмага уста тайинлаш керак.",
+        "price_set": "Таъмирлаш нархи белгиланди: {{amount}} сўм. Илтимос, тасдиқланг.",
+        "price_approved": "Мижоз таъмирлаш нархини тасдиқлади.",
+        "payment_received": "Тўлов қабул қилинди: {{amount}} {{currency}}."
+    },
+    "uz-lat": {
+        "order_assigned": "Sizga yangi buyurtma tayinlandi. Iltimos, buyurtmalar panelini tekshiring.",
+        "order_accepted": "Sizning buyurtmangiz qabul qilindi.",
+        "order_rejected": "Afsuski, sizning buyurtmangiz rad etildi.",
+        "order_completed": "Ta'mirlash tugallandi! Jihozingizni olishingiz mumkin.",
+        "order_closed": "Buyurtmangiz yopildi. Murojatingiz uchun rahmat!",
+        "order_status_changed": "Buyurtmangiz holati yangilandi.",
+        "order_needs_assignment": "Yangi buyurtmaga usta tayinlash kerak.",
+        "price_set": "Ta'mirlash narxi belgilandi: {{amount}} so'm. Iltimos, tasdiqlang.",
+        "price_approved": "Mijoz ta'mirlash narxini tasdiqladi.",
+        "payment_received": "To'lov qabul qilindi: {{amount}} {{currency}}."
+    },
+    "en": {
+        "order_assigned": "A new order has been assigned to you. Please check your dashboard.",
+        "order_accepted": "Your order has been accepted. We will start working on it soon.",
+        "order_rejected": "Unfortunately, your order has been rejected. Please contact us.",
+        "order_completed": "Repair completed! You can pick up your equipment.",
+        "order_closed": "Your order has been closed. Thank you!",
+        "order_status_changed": "Your order status has been updated.",
+        "order_needs_assignment": "A new order requires master assignment.",
+        "price_set": "Repair cost set: {{amount}} UZS. Please confirm.",
+        "price_approved": "Client has approved the repair cost.",
+        "payment_received": "Payment received: {{amount}} {{currency}}."
+    }
+}
