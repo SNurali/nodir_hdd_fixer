@@ -380,9 +380,9 @@ export class OrdersService {
         const order = await this.orderRepo.findOne({ where: { id } });
         if (!order) throw new NotFoundException('Order not found');
 
-        // Strict workflow: price is set after diagnostics (and can be corrected while waiting/after approval).
-        if (!['diagnosing', 'awaiting_approval', 'approved'].includes(order.status)) {
-            throw new BadRequestException('Prices can only be set for diagnosing, awaiting_approval, or approved orders');
+        // Allow setting price right after assignment too (master can skip manual switch to diagnosing).
+        if (!['assigned', 'diagnosing', 'awaiting_approval', 'approved'].includes(order.status)) {
+            throw new BadRequestException('Prices can only be set for assigned, diagnosing, awaiting_approval, or approved orders');
         }
 
         const previousStatus = order.status;
@@ -404,8 +404,9 @@ export class OrdersService {
             // Add price history entry
             const priceHistory = this.priceHistoryRepo.create({
                 order_id: id,
-                old_price: oldPrices[item.detail_id],
-                new_price: item.price,
+                order_detail_id: item.detail_id,
+                old_price: Number(oldPrices[item.detail_id]),
+                new_price: Number(item.price),
                 changed_by: userId,
                 reason: 'Price set/updated',
             });
@@ -414,13 +415,13 @@ export class OrdersService {
 
         // Update order total
         const orderDetails = await this.detailRepo.find({ where: { order_id: id } });
-        const newTotal = orderDetails.reduce((sum, d) => sum + (d.price || 0), 0);
-        const oldTotal = order.total_price_uzs || 0;
+        const newTotal = orderDetails.reduce((sum, d) => sum + Number(d.price || 0), 0);
+        const oldTotal = Number(order.total_price_uzs || 0);
         order.total_price_uzs = newTotal;
 
         // Change status to awaiting_approval when price is newly set or changed
         let statusChanged = false;
-        if (order.status === 'diagnosing' || order.status === 'approved') {
+        if (order.status === 'assigned' || order.status === 'diagnosing' || order.status === 'approved') {
             order.status = 'awaiting_approval';
             statusChanged = true;
         }
@@ -643,8 +644,9 @@ export class OrdersService {
             // Add price history entry
             const priceHistory = this.priceHistoryRepo.create({
                 order_id: id,
-                old_price: oldPrice,
-                new_price: item.price,
+                order_detail_id: item.detail_id,
+                old_price: Number(oldPrice),
+                new_price: Number(item.price),
                 changed_by: userId,
                 reason: 'Price updated',
             });
@@ -653,7 +655,7 @@ export class OrdersService {
 
         // Update order total
         const orderDetails = await this.detailRepo.find({ where: { order_id: id } });
-        const newTotal = orderDetails.reduce((sum, d) => sum + (d.price || 0), 0);
+        const newTotal = orderDetails.reduce((sum, d) => sum + Number(d.price || 0), 0);
         order.total_price_uzs = newTotal;
 
         // If price was changed after approval/start of repair, force re-approval by client.
@@ -1028,13 +1030,17 @@ export class OrdersService {
         const client = await this.clientRepo.findOne({ where: { id: order.client_id } });
         if (!client || !client.user_id) return;
 
-        // Add notification to queue
-        await this.notifQueue.add('send-notification', {
-            userId: client.user_id,
-            orderId: order.id,
-            templateKey,
-            language: order.language,
-        });
+        // Add notification to queue (non-blocking for business flow)
+        try {
+            await this.notifQueue.add('send-notification', {
+                userId: client.user_id,
+                orderId: order.id,
+                templateKey,
+                language: order.language,
+            });
+        } catch (error) {
+            console.error('Failed to enqueue client notification:', error);
+        }
     }
 
     // Private helper to notify admins
@@ -1050,12 +1056,16 @@ export class OrdersService {
 
         // Add notification for each admin
         for (const admin of admins) {
-            await this.notifQueue.add('send-notification', {
-                userId: admin.id,
-                orderId,
-                templateKey,
-                language,
-            });
+            try {
+                await this.notifQueue.add('send-notification', {
+                    userId: admin.id,
+                    orderId,
+                    templateKey,
+                    language,
+                });
+            } catch (error) {
+                console.error(`Failed to enqueue admin notification for user ${admin.id}:`, error);
+            }
         }
     }
 

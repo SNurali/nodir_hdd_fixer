@@ -10,6 +10,7 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { createLogger } from './common/logger/pino.logger';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
     const logger = createLogger('NestApplication');
@@ -17,6 +18,9 @@ async function bootstrap() {
         logger: ['error', 'warn', 'debug', 'log', 'verbose'],
     });
     const configService = app.get(ConfigService);
+
+    // Глобальный фильтр исключений
+    app.useGlobalFilters(new AllExceptionsFilter());
 
     // Cookie parsing
     app.use(cookieParser());
@@ -50,7 +54,7 @@ async function bootstrap() {
     });
 
     // Global prefix
-    app.setGlobalPrefix('v1');
+    app.setGlobalPrefix('v1', { exclude: ['/'] });
 
     const uploadsDir = join(process.cwd(), 'uploads');
     if (!existsSync(uploadsDir)) {
@@ -74,6 +78,20 @@ async function bootstrap() {
     logger.log(`Allowed CORS origin: ${webUrl}`);
     logger.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }
+
+// Обработка незавершенных обещаний
+process.on('unhandledRejection', (reason, promise) => {
+    const logger = createLogger('UnhandledRejection');
+    logger.error('Unhandled Rejection at:', { promise, reason });
+});
+
+// Обработка неперехваченных исключений
+process.on('uncaughtException', (error) => {
+    const logger = createLogger('UncaughtException');
+    logger.error('Uncaught Exception:', { error: error.message, stack: error.stack });
+    process.exit(1);
+});
+
 bootstrap().catch(err => {
     const logger = createLogger('Bootstrap');
     logger.error('Failed to start application', { error: err });

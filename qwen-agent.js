@@ -278,7 +278,13 @@ if (!CONFIG.models[model]) {
   process.exit(1);
 }
 
-if (query) {
+// Проверка на автоматический запуск из restart-server-with-ai.js
+const autoPrompt = process.env.QWEN_INITIAL_PROMPT;
+if (autoPrompt) {
+  console.log('🤖 Qwen AI запущен в автоматическом режиме для исправления ошибки...\n');
+  singleQuery(autoPrompt, model);
+  delete process.env.QWEN_INITIAL_PROMPT; // Очищаем чтобы не зациклить
+} else if (query) {
   // Одиночный запрос
   singleQuery(query, model);
 } else {

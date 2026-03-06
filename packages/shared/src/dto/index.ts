@@ -124,6 +124,12 @@ export const CreatePaymentDto = z.object({
     split_payments: z.array(CreatePaymentItemDto).optional(),
 });
 
+export const UpdatePaymentDto = z.object({
+    payment_type: z.enum(PAYMENT_TYPES).optional(),
+    paid_amount: z.number().positive(),
+    currency: z.enum(CURRENCIES).default('UZS'),
+});
+
 // ===== Lifecycle =====
 export const CreateLifecycleDto = z.object({
     order_details_id: z.string().uuid().optional(),
@@ -185,6 +191,7 @@ export type TCreateOrderDetailDto = z.infer<typeof CreateOrderDetailDto>;
 export type TSetPriceDto = z.infer<typeof SetPriceDto>;
 export type TUpdateTotalPriceDto = z.infer<typeof UpdateTotalPriceDto>;
 export type TCreatePaymentDto = z.infer<typeof CreatePaymentDto>;
+export type TUpdatePaymentDto = z.infer<typeof UpdatePaymentDto>;
 export type TCreateLifecycleDto = z.infer<typeof CreateLifecycleDto>;
 export type TAssignMasterDto = z.infer<typeof AssignMasterDto>;
 export type TCompleteDetailDto = z.infer<typeof CompleteDetailDto>;

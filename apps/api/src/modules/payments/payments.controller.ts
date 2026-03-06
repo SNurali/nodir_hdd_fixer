@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Param, Body, Query, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { FinancialReportService } from './financial-report.service';
 import { JwtAuthGuard, RolesGuard } from '../../common/guards';
 import { Roles, CurrentUser, Public } from '../../common/decorators';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import { CreatePaymentDto } from '@hdd-fixer/shared';
+import { CreatePaymentDto, UpdatePaymentDto } from '@hdd-fixer/shared';
 import { ClickWebhookDto, PaymeWebhookDto } from './dto/webhook.dto';
 
 @ApiTags('Payments')
@@ -27,6 +27,20 @@ export class PaymentsController {
         @CurrentUser('id') userId: string,
     ) {
         return this.paymentsService.create(orderId, dto, userId);
+    }
+
+    @Patch(':paymentId')
+    @Roles('admin', 'operator')
+    @ApiOperation({ summary: 'Update existing payment' })
+    update(
+        @Param('paymentId') paymentId: string,
+        @Body(new ZodValidationPipe(UpdatePaymentDto)) dto: any,
+        @CurrentUser('id') userId: string,
+    ) {
+        if (!paymentId || paymentId.length < 36) {
+            throw new BadRequestException('Invalid payment ID format');
+        }
+        return this.paymentsService.update(paymentId, dto, userId);
     }
 
     @Get('orders/:orderId')

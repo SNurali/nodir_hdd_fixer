@@ -17,6 +17,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { HealthModule } from './modules/health/health.module';
 import { WebsocketsModule } from './modules/websockets/websockets.module';
 import { throttlerConfig } from './common/throttler/throttler.config';
+import { AppController } from './app.controller';
 
 @Module({
     imports: [
@@ -72,5 +73,6 @@ import { throttlerConfig } from './common/throttler/throttler.config';
         HealthModule,
         WebsocketsModule,
     ],
+    controllers: [AppController],
 })
 export class AppModule { }

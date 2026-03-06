@@ -10,7 +10,13 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
     "build": "turbo run build",
+    "build:api": "npm run build --workspace=apps/api",
+    "start:api": "node apps/api/dist/main.js",
+    "start:api:watch": "node restart-server.js",
+    "start:api:ai": "node restart-server-with-ai.js",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "db:migrate": "npm run migration:run --workspace=apps/api",

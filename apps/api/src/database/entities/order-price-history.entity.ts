@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { OrderEntity } from './order.entity';
 import { UserEntity } from './user.entity';
+import { OrderDetailEntity } from './order-detail.entity';
 
 @Entity('order_price_history')
 export class OrderPriceHistoryEntity {
@@ -23,6 +24,13 @@ export class OrderPriceHistoryEntity {
     @ManyToOne(() => OrderEntity, { eager: true })
     @JoinColumn({ name: 'order_id' })
     order: OrderEntity;
+
+    @Column({ type: 'uuid', nullable: true })
+    order_detail_id?: string | null;
+
+    @ManyToOne(() => OrderDetailEntity, { nullable: true })
+    @JoinColumn({ name: 'order_detail_id' })
+    order_detail?: OrderDetailEntity | null;
 
     @Column({ type: 'decimal', precision: 18, scale: 2 })
     old_price: number;

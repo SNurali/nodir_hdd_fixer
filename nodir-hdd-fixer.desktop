@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Nodir HDD Fixer
+Comment=Запуск проекта Nodir HDD Fixer с AI-помощником
+Exec=gnome-terminal --working-directory=/home/mrnurali/nodir_hdd_fixer --command="npm run start:api:ai"
+Icon=utilities-terminal
+Terminal=false
+Categories=Development;
+Path=/home/mrnurali/nodir_hdd_fixer

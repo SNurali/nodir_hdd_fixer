@@ -150,6 +150,86 @@ export class PaymentsService {
         }
     }
 
+    async update(paymentId: string, dto: any, _userId: string | null) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+            const payment = await queryRunner.manager.findOne(PaymentEntity, {
+                where: { id: paymentId },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!payment) throw new NotFoundException('Payment not found');
+
+            const order = await queryRunner.manager.findOne(OrderEntity, {
+                where: { id: payment.order_id },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!order) throw new NotFoundException('Order not found');
+
+            const oldCurrency = payment.currency || 'UZS';
+            const oldAmount = Number(payment.paid_amount || 0);
+            const nextCurrency = dto.currency || oldCurrency;
+            const nextAmount = Number(dto.paid_amount || 0);
+
+            if (!nextAmount || nextAmount <= 0) {
+                throw new BadRequestException('Invalid payment amount');
+            }
+
+            const currentPaidUZS = Number(order.total_paid_uzs || 0);
+            const oldPartUZS = oldCurrency === 'UZS' ? oldAmount : 0;
+            const newPartUZS = nextCurrency === 'UZS' ? nextAmount : 0;
+            const nextPaidUZS = currentPaidUZS - oldPartUZS + newPartUZS;
+
+            if (nextPaidUZS < 0) {
+                throw new BadRequestException('Invalid payment update: resulting paid amount is negative');
+            }
+
+            const totalPriceUZS = Number(order.total_price_uzs || 0);
+            if (nextCurrency === 'UZS' && totalPriceUZS > 0 && nextPaidUZS > totalPriceUZS) {
+                const extra = nextPaidUZS - totalPriceUZS;
+                throw new BadRequestException(
+                    `Payment exceeds order total by ${extra.toFixed(2)} UZS`,
+                );
+            }
+
+            // Recalculate totals with currency shift support.
+            if (oldCurrency === 'USD') {
+                order.total_paid_usd = Math.max(0, Number(order.total_paid_usd || 0) - oldAmount);
+            } else if (oldCurrency === 'EUR') {
+                order.total_paid_eur = Math.max(0, Number(order.total_paid_eur || 0) - oldAmount);
+            } else {
+                order.total_paid_uzs = Math.max(0, Number(order.total_paid_uzs || 0) - oldAmount);
+            }
+
+            if (nextCurrency === 'USD') {
+                order.total_paid_usd = Number(order.total_paid_usd || 0) + nextAmount;
+            } else if (nextCurrency === 'EUR') {
+                order.total_paid_eur = Number(order.total_paid_eur || 0) + nextAmount;
+            } else {
+                order.total_paid_uzs = Number(order.total_paid_uzs || 0) + nextAmount;
+            }
+
+            payment.paid_amount = nextAmount;
+            payment.currency = nextCurrency;
+            payment.payment_type = dto.payment_type || payment.payment_type;
+
+            const savedPayment = await queryRunner.manager.save(payment);
+            await queryRunner.manager.save(order);
+
+            await queryRunner.commitTransaction();
+            this.logger.log(`Payment updated: ${paymentId}`);
+            return savedPayment;
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            this.logger.error(`Payment update failed: ${error.message}`);
+            throw error;
+        } finally {
+            await queryRunner.release();
+        }
+    }
+
     async findByOrder(orderId: string, user: any) {
         const order = await this.orderRepo.findOne({ where: { id: orderId } });
         if (!order) throw new NotFoundException('Order not found');
