@@ -4,16 +4,27 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Serverless detection: Vercel, AWS Lambda, etc.
-const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+// Check at module load time AND runtime
+const checkIsServerless = () => {
+  return !!process.env.VERCEL || 
+         !!process.env.AWS_LAMBDA_FUNCTION_NAME || 
+         !!process.env.CF_PAGES ||
+         !process.env.NODE_ENV; // Fallback for undefined environments
+};
 
 // In serverless, we can only write to stdout (file system is read-only or ephemeral)
-const logDir = isServerless ? null : path.join(process.cwd(), 'logs');
+// Check lazily to ensure process.env is available
+const getLogDir = () => {
+  if (checkIsServerless()) return null;
+  return path.join(process.cwd(), 'logs');
+};
 
 // Create file streams only if we have a writable log directory
 const getFileStreams = () => {
-  if (!logDir || isServerless) return [];
-  
   try {
+    const logDir = getLogDir();
+    if (!logDir) return [];
+    
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
