@@ -1,6 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { resolve, isAbsolute, join } from 'path';
 
+// Serverless detection: Vercel, AWS Lambda, etc.
+const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+
 // Resolve paths from the repository root so uploads do not depend on process.cwd().
 const API_ROOT_DIR = resolve(__dirname, '..', '..', '..');
 const WORKSPACE_ROOT_DIR = resolve(API_ROOT_DIR, '..', '..');
@@ -33,13 +36,23 @@ export function toUploadsFilePath(uploadUrl: string | null | undefined): string 
 }
 
 export function migrateLegacyUploads(): void {
+    // Skip migration in serverless environments (read-only filesystem)
+    if (isServerless) {
+        return;
+    }
+
     const uploadsDir = getUploadsDir();
 
     if (!existsSync(LEGACY_UPLOADS_DIR) || LEGACY_UPLOADS_DIR === uploadsDir) {
         return;
     }
 
-    copyDirectoryContents(LEGACY_UPLOADS_DIR, uploadsDir);
+    try {
+        copyDirectoryContents(LEGACY_UPLOADS_DIR, uploadsDir);
+    } catch (error) {
+        // Silently ignore errors in serverless (read-only filesystem)
+        console.warn('Failed to migrate legacy uploads:', error);
+    }
 }
 
 function copyDirectoryContents(sourceDir: string, targetDir: string): void {

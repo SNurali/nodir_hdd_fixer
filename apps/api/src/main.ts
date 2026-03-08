@@ -12,6 +12,11 @@ import { createLogger } from './common/logger/pino.logger';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { getUploadsDir, migrateLegacyUploads } from './common/utils/uploads-path';
 
+// Serverless detection: Vercel, AWS Lambda, etc.
+function isServerless(): boolean {
+    return !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+}
+
 async function bootstrap() {
     const logger = createLogger('NestApplication');
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -58,10 +63,14 @@ async function bootstrap() {
 
     const uploadsDir = getUploadsDir();
     migrateLegacyUploads();
-    if (!existsSync(uploadsDir)) {
-        mkdirSync(uploadsDir, { recursive: true });
+    
+    // In serverless environments, the filesystem is read-only, so we skip static assets
+    if (!isServerless()) {
+        if (!existsSync(uploadsDir)) {
+            mkdirSync(uploadsDir, { recursive: true });
+        }
+        app.useStaticAssets(uploadsDir, { prefix: '/uploads/' });
     }
-    app.useStaticAssets(uploadsDir, { prefix: '/uploads/' });
 
     // Swagger
     const swaggerConfig = new DocumentBuilder()
