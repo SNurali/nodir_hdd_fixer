@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, UsePipes } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, UsePipes } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { IssuesService } from './issues.service';
 import { JwtAuthGuard, RolesGuard } from '../../common/guards';
 import { Roles, CurrentUser, Public } from '../../common/decorators';
@@ -18,7 +18,7 @@ export class IssuesController {
 
     @Post()
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin')
+    @Roles('admin', 'operator')
     @ApiOperation({ summary: 'Create issue type' })
     @UsePipes(new ZodValidationPipe(CreateIssueDto))
     create(@Body() dto: any, @CurrentUser('id') userId: string) {
@@ -27,10 +27,18 @@ export class IssuesController {
 
     @Patch(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin')
+    @Roles('admin', 'operator')
     @ApiOperation({ summary: 'Update issue type' })
     @UsePipes(new ZodValidationPipe(UpdateIssueDto))
     update(@Param('id') id: string, @Body() dto: any) {
         return this.service.update(id, dto);
+    }
+
+    @Delete(':id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin', 'operator')
+    @ApiOperation({ summary: 'Delete issue type' })
+    remove(@Param('id') id: string) {
+        return this.service.remove(id);
     }
 }

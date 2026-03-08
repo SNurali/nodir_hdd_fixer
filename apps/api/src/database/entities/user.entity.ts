@@ -26,6 +26,9 @@ export class UserEntity {
     @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
     phone: string | null;
 
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    telegram: string | null;
+
     @Column({ type: 'varchar', length: 255, nullable: true })
     password_hash: string | null;
 

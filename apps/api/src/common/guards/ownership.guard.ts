@@ -1,11 +1,9 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrderEntity } from '../../database/entities/order.entity';
 import { UserEntity } from '../../database/entities/user.entity';
 import { ClientEntity } from '../../database/entities/client.entity';
-import { Observable } from 'rxjs';
 
 @Injectable()
 export class OwnershipGuard implements CanActivate {
@@ -28,8 +26,8 @@ export class OwnershipGuard implements CanActivate {
 
     // Get role name from either role_name (from JWT) or role.name_eng (from DB)
     // Use 'any' type to avoid strict typing issues since user can come from different sources
-    const typedUser: any = user;
-    const roleName = typedUser.role_name || (typedUser.role && typedUser.role.name_eng);
+    const typedUser = user as UserEntity & { role_name?: string };
+    const roleName = typedUser.role_name || typedUser.role?.name_eng;
 
     // Allow admin, operator to access any order
     if (['admin', 'operator'].includes(roleName)) {

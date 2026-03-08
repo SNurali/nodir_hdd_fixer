@@ -17,15 +17,14 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { randomUUID } from 'crypto';
-import { extname, join } from 'path';
+import { extname } from 'path';
 import { mkdirSync } from 'fs';
 import { UsersService } from './users.service';
 import { JwtAuthGuard, RolesGuard } from '../../common/guards';
 import { Roles, CurrentUser } from '../../common/decorators';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import { getAvatarUploadsDir } from '../../common/utils/uploads-path';
 import { CreateUserDto, UpdateUserDto, PaginationDto, ChangeUserRoleDto } from '@hdd-fixer/shared';
-
-const AVATAR_UPLOAD_DIR = join(process.cwd(), 'uploads', 'avatars');
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -88,8 +87,9 @@ export class UsersController {
         FileInterceptor('avatar', {
             storage: diskStorage({
                 destination: (_req, _file, cb) => {
-                    mkdirSync(AVATAR_UPLOAD_DIR, { recursive: true });
-                    cb(null, AVATAR_UPLOAD_DIR);
+                    const avatarUploadDir = getAvatarUploadsDir();
+                    mkdirSync(avatarUploadDir, { recursive: true });
+                    cb(null, avatarUploadDir);
                 },
                 filename: (_req, file, cb) => {
                     const extension = extname(file.originalname || '').toLowerCase() || '.jpg';

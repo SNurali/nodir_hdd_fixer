@@ -1,13 +1,21 @@
-import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Param, Post, Query, UseGuards, UsePipes } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
-import { JwtAuthGuard } from '../../common/guards';
-import { CurrentUser } from '../../common/decorators';
+import { JwtAuthGuard, RolesGuard } from '../../common/guards';
+import { CurrentUser, Roles } from '../../common/decorators';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import { z } from 'zod';
+
+const BroadcastMarketingDto = z.object({
+    message: z.string().trim().min(1).max(500),
+    language: z.enum(['ru', 'en', 'uz-cyr', 'uz-lat']).optional(),
+    channels: z.array(z.enum(['in_app', 'email', 'sms', 'telegram', 'push'])).min(1).optional(),
+});
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
 @Controller('notifications')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class NotificationsController {
     constructor(private readonly service: NotificationsService) { }
 
@@ -41,5 +49,13 @@ export class NotificationsController {
     @ApiOperation({ summary: 'Mark all notifications as read' })
     markReadAll(@CurrentUser('id') userId: string) {
         return this.service.markAllAsRead(userId);
+    }
+
+    @Post('broadcast-marketing')
+    @Roles('admin')
+    @UsePipes(new ZodValidationPipe(BroadcastMarketingDto))
+    @ApiOperation({ summary: 'Send marketing broadcast to clients who opted in' })
+    broadcastMarketing(@Body() dto: z.infer<typeof BroadcastMarketingDto>) {
+        return this.service.sendMarketingBroadcast(dto.message, dto.language, dto.channels);
     }
 }

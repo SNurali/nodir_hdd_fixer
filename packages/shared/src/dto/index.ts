@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { LANGUAGES, PAYMENT_TYPES, CURRENCIES } from '../constants/index';
+import { LANGUAGES } from '../constants/index';
+import { OrderStatus, PaymentType, Currency, Language } from '../enums/index';
 
 // ===== Auth =====
 export const RegisterDto = z.object({
@@ -8,7 +9,7 @@ export const RegisterDto = z.object({
     email: z.string().email().optional(),
     telegram: z.string().max(100).optional(),
     password: z.string().min(6).max(100),
-    preferred_language: z.enum(LANGUAGES).default('ru'),
+    preferred_language: z.nativeEnum(Language).default(Language.RU),
 });
 
 export const LoginDto = z.object({
@@ -31,7 +32,7 @@ export const CreateClientDto = z.object({
     phone: z.string().regex(/^\+998\d{9}$/),
     telegram: z.string().max(100).optional(),
     email: z.string().email().optional(),
-    preferred_language: z.enum(LANGUAGES).default('ru'),
+    preferred_language: z.nativeEnum(Language).default(Language.RU),
 });
 
 export const UpdateClientDto = CreateClientDto.partial();
@@ -66,7 +67,7 @@ export const CreateOrderDetailDto = z.object({
 // ===== Order =====
 export const CreateOrderDto = z.object({
     client_id: z.string().uuid().optional(), // auto for client role
-    language: z.enum(LANGUAGES).optional(),
+    language: z.nativeEnum(Language).optional(),
     deadline: z.string().datetime().optional(),
     details: z.array(CreateOrderDetailDto).min(1),
     // Guest checkout fields
@@ -77,20 +78,7 @@ export const CreateOrderDto = z.object({
 });
 
 export const UpdateOrderDto = z.object({
-    status: z
-        .enum([
-            'new',
-            'assigned',
-            'diagnosing',
-            'awaiting_approval',
-            'approved',
-            'in_repair',
-            'ready_for_pickup',
-            'unrepairable',
-            'issued',
-            'cancelled',
-        ])
-        .optional(),
+    status: z.nativeEnum(OrderStatus).optional(),
     deadline: z.string().datetime().optional(),
     reason: z.string().optional(),
 });
@@ -111,23 +99,23 @@ export const UpdateTotalPriceDto = z.object({
 
 // ===== Payment =====
 export const CreatePaymentItemDto = z.object({
-    payment_type: z.enum(PAYMENT_TYPES),
+    payment_type: z.nativeEnum(PaymentType),
     paid_amount: z.number().positive(),
-    currency: z.enum(CURRENCIES).default('UZS'),
+    currency: z.nativeEnum(Currency).default(Currency.UZS),
 });
 
 export const CreatePaymentDto = z.object({
-    payment_type: z.enum(PAYMENT_TYPES).optional(),
+    payment_type: z.nativeEnum(PaymentType).optional(),
     paid_amount: z.number().positive().optional(),
-    currency: z.enum(CURRENCIES).default('UZS'),
+    currency: z.nativeEnum(Currency).default(Currency.UZS),
     // Support for split payments
     split_payments: z.array(CreatePaymentItemDto).optional(),
 });
 
 export const UpdatePaymentDto = z.object({
-    payment_type: z.enum(PAYMENT_TYPES).optional(),
+    payment_type: z.nativeEnum(PaymentType).optional(),
     paid_amount: z.number().positive(),
-    currency: z.enum(CURRENCIES).default('UZS'),
+    currency: z.nativeEnum(Currency).default(Currency.UZS),
 });
 
 // ===== Lifecycle =====

@@ -1,12 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Queue } from 'bullmq';
 import { NotificationEntity } from '../../database/entities';
 import { UserEntity } from '../../database/entities';
 import { OrderEntity } from '../../database/entities';
 import { ConfigService } from '@nestjs/config';
-
-export type NotificationChannel = 'email' | 'sms' | 'push' | 'telegram';
+import {
+    AppNotificationChannel,
+    isChannelEnabled,
+    isTemplateAllowed,
+} from './notification-preferences';
 
 @Injectable()
 export class NotificationsService {
@@ -19,8 +24,121 @@ export class NotificationsService {
         private readonly userRepo: Repository<UserEntity>,
         @InjectRepository(OrderEntity)
         private readonly orderRepo: Repository<OrderEntity>,
+        @InjectQueue('notifications')
+        private readonly notifQueue: Queue,
         private readonly configService: ConfigService,
     ) {}
+
+    private isChannelEnabled(user: UserEntity, channel: AppNotificationChannel): boolean {
+        return isChannelEnabled(user, channel);
+    }
+
+    private isTemplateAllowed(user: UserEntity, channel: AppNotificationChannel, templateKey: string): boolean {
+        return isTemplateAllowed(user, channel, templateKey);
+    }
+
+    private resolveNotificationChannels(
+        user: UserEntity,
+        requestedChannels?: AppNotificationChannel[],
+    ): AppNotificationChannel[] {
+        if (requestedChannels && requestedChannels.length > 0) {
+            return requestedChannels;
+        }
+
+        const channels: AppNotificationChannel[] = ['in_app'];
+
+        if (user.email) channels.push('email');
+        if (user.phone) channels.push('sms');
+        if (user.telegram) channels.push('telegram');
+        if (user.fcm_token) channels.push('push');
+
+        return channels;
+    }
+
+    async queueTemplateNotificationToUser(
+        userId: string,
+        orderId: string | null,
+        templateKey: string,
+        language: string,
+        payload: Record<string, unknown> = {},
+        requestedChannels?: AppNotificationChannel[],
+    ) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) {
+            return { queued: 0, skipped: true };
+        }
+
+        const channels = this.resolveNotificationChannels(user, requestedChannels);
+        let queued = 0;
+
+        for (const channel of channels) {
+            if (!this.isTemplateAllowed(user, channel, templateKey)) {
+                continue;
+            }
+
+            const notification = this.notifRepo.create({
+                user_id: user.id,
+                order_id: orderId,
+                channel,
+                template_key: templateKey,
+                language,
+                payload,
+                status: channel === 'in_app' ? 'sent' : 'pending',
+                is_read: false,
+                sent_at: channel === 'in_app' ? new Date() : null,
+            } as NotificationEntity);
+
+            const saved = await this.notifRepo.save(notification);
+            queued += 1;
+
+            if (channel !== 'in_app') {
+                await this.notifQueue.add('send-notification', { notificationId: saved.id });
+            }
+        }
+
+        return { queued, skipped: queued === 0 };
+    }
+
+    async sendMarketingBroadcast(
+        message: string,
+        language?: string,
+        requestedChannels?: AppNotificationChannel[],
+    ) {
+        const recipients = await this.userRepo.find({
+            where: {
+                role: {
+                    name_eng: 'client',
+                },
+            },
+            relations: ['role'],
+        });
+
+        let queued = 0;
+        let skipped = 0;
+
+        for (const recipient of recipients) {
+            const result = await this.queueTemplateNotificationToUser(
+                recipient.id,
+                null,
+                'marketing_broadcast',
+                language || recipient.preferred_language || 'ru',
+                { message },
+                requestedChannels,
+            );
+
+            if (result.skipped) {
+                skipped += 1;
+            } else {
+                queued += result.queued;
+            }
+        }
+
+        return {
+            recipients: recipients.length,
+            queued,
+            skipped,
+        };
+    }
 
     async sendOrderStatusNotification(
         orderId: string,
@@ -54,17 +172,19 @@ export class NotificationsService {
 
         const statusLabel = (statusLabels[newStatus] as any)?.[language] || newStatus;
         const orderShortId = orderId.slice(0, 8).toUpperCase();
+        const title = language === 'ru' ? `Статус заказа #${orderShortId} изменён` :
+            language === 'en' ? `Order status #${orderShortId} changed` :
+            `Buyurtma holati #${orderShortId} o'zgardi`;
+        const text = language === 'ru' ? `Ваш заказ перешёл в статус: ${statusLabel}` :
+            language === 'en' ? `Your order has been updated to: ${statusLabel}` :
+            `Sizning buyurtmangiz holati o'zgardi: ${statusLabel}`;
 
         // Email notification
-        if (user.email) {
+        if (user.email && this.isChannelEnabled(user, 'email')) {
             await this.sendEmail(
                 user.email,
-                language === 'ru' ? `Статус заказа #${orderShortId} изменён` :
-                language === 'en' ? `Order status #${orderShortId} changed` :
-                `Buyurtma holati #${orderShortId} o'zgardi`,
-                language === 'ru' ? `Ваш заказ перешёл в статус: ${statusLabel}` :
-                language === 'en' ? `Your order has been updated to: ${statusLabel}` :
-                `Sizning buyurtmangiz holati o'zgardi: ${statusLabel}`,
+                title,
+                text,
                 {
                     template: 'order-status-change',
                     data: { orderId: orderShortId, status: statusLabel, clientName: order.client?.full_name, language }
@@ -73,11 +193,22 @@ export class NotificationsService {
         }
 
         // SMS notification
-        if (user.phone) {
+        if (user.phone && this.isChannelEnabled(user, 'sms')) {
             await this.sendSMS(
                 user.phone,
                 `Заказ #${orderShortId}: ${statusLabel}`
             );
+        }
+
+        if (user.telegram && this.isChannelEnabled(user, 'telegram')) {
+            await this.sendTelegram(user.telegram, text);
+        }
+
+        if (user.fcm_token && this.isChannelEnabled(user, 'push')) {
+            await this.sendPush(user.fcm_token, title, text, {
+                orderId: orderShortId,
+                status: newStatus,
+            });
         }
 
         // Create in-app notification
@@ -115,15 +246,28 @@ export class NotificationsService {
             'uz-lat': `Usta narx belgiladi: ${priceFormatted} so'm. Iltimos, tasdiqlang.`
         };
 
-        if (user.email) {
+        if (user.email && this.isChannelEnabled(user, 'email')) {
             await this.sendEmail(user.email, subjects[language] || subjects.ru, messages[language] || messages.ru, {
                 template: 'price-approval',
                 data: { orderId: orderShortId, price: priceFormatted, language }
             });
         }
 
-        if (user.phone) {
+        if (user.phone && this.isChannelEnabled(user, 'sms')) {
             await this.sendSMS(user.phone, `${subjects[language] || subjects.ru}: ${priceFormatted} UZS`);
+        }
+
+        if (user.telegram && this.isChannelEnabled(user, 'telegram')) {
+            await this.sendTelegram(user.telegram, messages[language] || messages.ru);
+        }
+
+        if (user.fcm_token && this.isChannelEnabled(user, 'push')) {
+            await this.sendPush(
+                user.fcm_token,
+                subjects[language] || subjects.ru,
+                messages[language] || messages.ru,
+                { orderId: orderShortId, price: priceFormatted },
+            );
         }
 
         await this.createInAppNotification(userId, orderId, 'price_approval', {
@@ -148,18 +292,33 @@ export class NotificationsService {
             'uz-cyr': 'Сизга янги буюртма тайинланди',
             'uz-lat': 'Sizga yangi buyurtma tayinlandi'
         };
+        const text = language === 'en'
+            ? `Order #${orderShortId} has been assigned to you. Please review it in your dashboard.`
+            : language?.startsWith('uz')
+                ? `#${orderShortId} buyurtma sizga tayinlandi. Iltimos, shaxsiy kabinetingizda tekshiring.`
+                : `Заказ #${orderShortId} назначен вам. Пожалуйста, проверьте в личном кабинете.`;
 
-        if (master.email) {
+        if (master.email && this.isChannelEnabled(master, 'email')) {
             await this.sendEmail(
                 master.email,
                 subjects[language] || subjects.ru,
-                `Заказ #${orderShortId} назначен вам. Пожалуйста, проверьте в личном кабинете.`,
+                text,
                 { template: 'master-assignment', data: { orderId: orderShortId, masterName: master.full_name, language } }
             );
         }
 
-        if (master.phone) {
+        if (master.phone && this.isChannelEnabled(master, 'sms')) {
             await this.sendSMS(master.phone, `${subjects[language]} #${orderShortId}`);
+        }
+
+        if (master.telegram && this.isChannelEnabled(master, 'telegram')) {
+            await this.sendTelegram(master.telegram, text);
+        }
+
+        if (master.fcm_token && this.isChannelEnabled(master, 'push')) {
+            await this.sendPush(master.fcm_token, subjects[language] || subjects.ru, text, {
+                orderId: orderShortId,
+            });
         }
 
         await this.createInAppNotification(masterId, orderId, 'master_assignment', {

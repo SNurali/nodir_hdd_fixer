@@ -36,7 +36,7 @@ export class AddPaymentConstraints1712579000000 implements MigrationInterface {
                 ON payments(provider, external_txn_id) 
                 WHERE external_txn_id IS NOT NULL
             `);
-        } catch (err) {
+        } catch (_err) {
             // Handle case where index already exists
             console.log('Index idx_payments_provider_external_id already exists');
         }
@@ -45,7 +45,7 @@ export class AddPaymentConstraints1712579000000 implements MigrationInterface {
     public async down(queryRunner: QueryRunner): Promise<void> {
         try {
             await queryRunner.query(`DROP INDEX IF EXISTS idx_payments_provider_external_id`);
-        } catch (err) {
+        } catch (_err) {
             console.log('Index idx_payments_provider_external_id does not exist');
         }
         

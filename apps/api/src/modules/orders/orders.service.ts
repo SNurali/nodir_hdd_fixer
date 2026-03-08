@@ -6,8 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThanOrEqual } from 'typeorm';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import {
     OrderEntity,
     OrderDetailEntity,
@@ -15,7 +13,6 @@ import {
     OrderPriceHistoryEntity,
     ClientEntity,
     UserEntity,
-    NotificationEntity,
 } from '../../database/entities';
 import { TCreateOrderDto, TPaginationDto } from '@hdd-fixer/shared';
 import {
@@ -23,9 +20,9 @@ import {
     validateTransitionRequirements,
     OrderRole,
 } from './order-state-machine';
+import { OrdersNotificationsService } from './orders-notifications.service';
 import { AuditService } from './audit.service';
 import { StateMachineService } from './state-machine.service';
-import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class OrdersService {
@@ -42,13 +39,9 @@ export class OrdersService {
         private readonly clientRepo: Repository<ClientEntity>,
         @InjectRepository(UserEntity)
         private readonly userRepo: Repository<UserEntity>,
-        @InjectRepository(NotificationEntity)
-        private readonly notifRepo: Repository<NotificationEntity>,
-        @InjectQueue('notifications')
-        private readonly notifQueue: Queue,
         private readonly auditService: AuditService,
+        private readonly ordersNotificationsService: OrdersNotificationsService,
         private readonly stateMachineService: StateMachineService,
-        private readonly notificationsService: NotificationsService,
     ) { }
 
     // Helper to get system user ID (for automated actions)
@@ -185,7 +178,7 @@ export class OrdersService {
 
             // Notify master if assigned
             if (detail.attached_to) {
-                await this.sendNotification(
+                await this.ordersNotificationsService.queueTemplateToUser(
                     detail.attached_to,
                     savedOrder.id,
                     'order_assigned',
@@ -197,11 +190,11 @@ export class OrdersService {
         // If no master assigned to any detail, notify admins
         const hasUnassigned = dto.details.some((d) => !d.attached_to);
         if (hasUnassigned) {
-            await this.notifyAdmins(savedOrder.id, 'order_needs_assignment', savedOrder.language);
+            await this.ordersNotificationsService.notifyAdmins(savedOrder.id, 'order_needs_assignment', savedOrder.language);
         } else {
             savedOrder.status = 'assigned';
             await this.orderRepo.save(savedOrder);
-            await this.notifyClientStatusChange(savedOrder, 'assigned');
+            await this.ordersNotificationsService.notifyClientStatusChange(savedOrder, 'assigned');
         }
 
         // Add lifecycle entry
@@ -446,7 +439,7 @@ export class OrdersService {
         );
 
         // Notify client that price is set and needs approval
-        await this.notifyClient(order, 'price_set');
+        await this.ordersNotificationsService.notifyClient(order, 'price_set');
 
         // If status changed to awaiting_approval, log it
         if (statusChanged) {
@@ -457,7 +450,7 @@ export class OrdersService {
                 'awaiting_approval',
                 'Цена выставлена на согласование',
             );
-            await this.notifyClientStatusChange(order, 'awaiting_approval');
+            await this.ordersNotificationsService.notifyClientStatusChange(order, 'awaiting_approval');
         }
 
         return order;
@@ -489,10 +482,10 @@ export class OrdersService {
 
         // Log status change
         await this.auditService.logStatusChange(id, userId, oldStatus, 'approved', 'Клиент одобрил цену');
-        await this.notifyClientStatusChange(order, 'approved');
+        await this.ordersNotificationsService.notifyClientStatusChange(order, 'approved');
 
         // Notify admins/operators that price is approved and repair can start
-        await this.notifyAdmins(id, 'price_approved', order.language);
+        await this.ordersNotificationsService.notifyAdmins(id, 'price_approved', order.language);
 
         return order;
     }
@@ -516,10 +509,10 @@ export class OrdersService {
         });
 
         await this.auditService.logStatusChange(id, userId, oldStatus, 'diagnosing', 'Клиент отклонил цену');
-        await this.notifyClientStatusChange(order, 'diagnosing');
+        await this.ordersNotificationsService.notifyClientStatusChange(order, 'diagnosing');
 
         // Notify admins/operators
-        await this.notifyAdmins(id, 'price_rejected', order.language);
+        await this.ordersNotificationsService.notifyAdmins(id, 'price_rejected', order.language);
 
         return order;
     }
@@ -552,7 +545,7 @@ export class OrdersService {
                 order.status = 'assigned';
                 await this.orderRepo.save(order);
                 await this.auditService.logStatusChange(orderId, userId, oldStatus, 'assigned', 'Мастер назначен');
-                await this.notifyClientStatusChange(order, 'assigned');
+                await this.ordersNotificationsService.notifyClientStatusChange(order, 'assigned');
             }
         }
 
@@ -560,7 +553,7 @@ export class OrdersService {
         await this.addLifecycle(orderId, detailId, 'Мастер назначен', 1, userId, { actionType: 'master_assigned' });
 
         // Notify master
-        await this.sendNotification(masterId, orderId, 'order_assigned', 'ru');
+        await this.ordersNotificationsService.queueTemplateToUser(masterId, orderId, 'order_assigned', 'ru');
 
         return detail;
     }
@@ -584,14 +577,14 @@ export class OrdersService {
         await this.addLifecycle(orderId, null, 'Мастер назначен на все работы', 1, userId, { actionType: 'master_assigned' });
 
         // Notify master
-        await this.sendNotification(masterId, orderId, 'order_assigned', order.language);
+        await this.ordersNotificationsService.queueTemplateToUser(masterId, orderId, 'order_assigned', order.language);
 
         if (order.status === 'new') {
             const oldStatus = order.status;
             order.status = 'assigned';
             await this.orderRepo.save(order);
             await this.auditService.logStatusChange(orderId, userId, oldStatus, 'assigned', 'Мастер назначен на заказ');
-            await this.notifyClientStatusChange(order, 'assigned');
+            await this.ordersNotificationsService.notifyClientStatusChange(order, 'assigned');
         }
 
         return { success: true };
@@ -681,11 +674,11 @@ export class OrdersService {
 
         if (statusChanged) {
             await this.auditService.logStatusChange(id, userId, previousStatus, 'awaiting_approval', 'Цена изменена после согласования');
-            await this.notifyClientStatusChange(order, 'awaiting_approval');
+            await this.ordersNotificationsService.notifyClientStatusChange(order, 'awaiting_approval');
         }
 
         // Notify client of price update
-        await this.notifyClient(order, 'price_updated');
+        await this.ordersNotificationsService.notifyClient(order, 'price_updated');
 
         return order;
     }
@@ -792,9 +785,9 @@ export class OrdersService {
         });
 
         // Notify client
-        await this.notifyClient(order, 'price_updated');
+        await this.ordersNotificationsService.notifyClient(order, 'price_updated');
         if (statusChanged) {
-            await this.notifyClientStatusChange(order, 'awaiting_approval');
+            await this.ordersNotificationsService.notifyClientStatusChange(order, 'awaiting_approval');
         }
 
         return order;
@@ -815,10 +808,17 @@ export class OrdersService {
         });
         if (!order) throw new NotFoundException('Order not found');
 
+        const user = await this.userRepo.findOne({ where: { id: userId }, relations: ['role'] });
+
         if (dto.status) {
             // No-op update should not create lifecycle/audit noise.
             if (dto.status === order.status) {
                 return order;
+            }
+
+            const requireStatusComment = this.requiresStatusComment(user);
+            if (requireStatusComment && !String(dto.reason || '').trim()) {
+                throw new BadRequestException('Комментарий обязателен при смене статуса');
             }
 
             // State machine validation
@@ -866,7 +866,6 @@ export class OrdersService {
             }
 
             // Use state machine service to transition status
-            const user = await this.userRepo.findOne({ where: { id: userId }, relations: ['role'] });
             if (user) {
                 const updatedOrder = await this.stateMachineService.transitionToStatus(order.id, dto.status, user, dto.reason);
                 order.status = updatedOrder.status; // Update local object status to prevent overwrite by subsequent save
@@ -875,22 +874,18 @@ export class OrdersService {
                 order.status = dto.status;
             }
 
-            // Trigger notification
-            try {
-                if (order.client?.user_id) {
-                    await this.notificationsService.sendOrderStatusNotification(
-                        id,
-                        order.client.user_id,
-                        dto.status,
-                        order.language,
-                    );
-                }
-            } catch (error) {
-                console.error('Failed to send status notification:', error);
+            // Trigger direct client status notification when linked user is present.
+            if (order.client?.user_id) {
+                await this.ordersNotificationsService.notifyClientStatusChangeByUserId(
+                    id,
+                    order.client.user_id,
+                    dto.status,
+                    order.language,
+                );
             }
 
             // Notify client about status change
-            await this.notifyClient(order, 'order_status_changed');
+            await this.ordersNotificationsService.notifyClient(order, 'order_status_changed');
         }
 
         if (dto.deadline) {
@@ -1010,133 +1005,50 @@ export class OrdersService {
         return 'note';
     }
 
-    // Private helper to send notifications
-    private async sendNotification(
-        userId: string,
-        orderId: string,
-        templateKey: string,
-        language: string,
-    ) {
-        // In a real implementation, this would add to a queue
-        // For now, we'll just log it
-        console.log(`[NOTIFICATION] Would send ${templateKey} for order ${orderId} to user ${userId} in ${language}`);
-    }
-
-    // Private helper to notify client
-    private async notifyClient(order: OrderEntity, templateKey: string) {
-        if (!order.client_id) return;
-
-        // Get client user ID
-        const client = await this.clientRepo.findOne({ where: { id: order.client_id } });
-        if (!client || !client.user_id) return;
-
-        // Add notification to queue (non-blocking for business flow)
-        try {
-            await this.notifQueue.add('send-notification', {
-                userId: client.user_id,
-                orderId: order.id,
-                templateKey,
-                language: order.language,
-            });
-        } catch (error) {
-            console.error('Failed to enqueue client notification:', error);
-        }
-    }
-
-    // Private helper to notify admins
-    private async notifyAdmins(orderId: string, templateKey: string, language: string) {
-        // Get all admin users
-        const admins = await this.userRepo.find({
-            where: {
-                role: {
-                    name_eng: In(['admin', 'operator'])
-                }
-            }
-        });
-
-        // Add notification for each admin
-        for (const admin of admins) {
-            try {
-                await this.notifQueue.add('send-notification', {
-                    userId: admin.id,
-                    orderId,
-                    templateKey,
-                    language,
-                });
-            } catch (error) {
-                console.error(`Failed to enqueue admin notification for user ${admin.id}:`, error);
-            }
-        }
-    }
-
-    private async notifyClientStatusChange(order: OrderEntity, status: string) {
-        if (!order?.client_id) return;
-
-        const client = await this.clientRepo.findOne({ where: { id: order.client_id } });
-        if (!client?.user_id) return;
-
-        try {
-            await this.notificationsService.sendOrderStatusNotification(
-                order.id,
-                client.user_id,
-                status,
-                order.language || 'ru',
-            );
-        } catch (error) {
-            console.error('Failed to send direct client status notification:', error);
-        }
-    }
-
     // ===== GET STATS =====
-    async getStats() {
-        const totalOrders = await this.orderRepo.count();
+    async getStats(period: 'today' | 'week' | 'month' = 'week') {
+        const { start, previousStart, label } = this.resolveStatsPeriod(period);
+
+        const totalOrders = await this.orderRepo.count({
+            where: { created_at: MoreThanOrEqual(start) as any },
+        });
 
         const activeRepairs = await this.orderRepo.count({
             where: {
-                status: In(['new', 'assigned', 'diagnosing', 'awaiting_approval', 'approved', 'in_repair', 'ready_for_pickup', 'unrepairable'])
+                status: In(['new', 'assigned', 'diagnosing', 'awaiting_approval', 'approved', 'in_repair', 'ready_for_pickup', 'unrepairable']),
+                created_at: MoreThanOrEqual(start) as any,
             }
         });
-
-        // Completed today - use lifecycle to find transitions to 'ready_for_pickup' today
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
         const completedToday = await this.lifecycleRepo.count({
             where: {
                 to_status: 'ready_for_pickup',
-                created_at: MoreThanOrEqual(today) as any
+                created_at: MoreThanOrEqual(start) as any
             }
         });
 
-        // Total Revenue - Sum of all actual payments
         const revenueResult = await this.orderRepo
             .createQueryBuilder('order')
             .select('SUM(order.total_paid_uzs)', 'total')
+            .where('order.created_at >= :start', { start })
             .getRawOne();
 
-        // Compare today's new orders vs yesterday to get real trend
-        const startToday = new Date();
-        startToday.setHours(0, 0, 0, 0);
-
-        const startYesterday = new Date(startToday);
-        startYesterday.setDate(startYesterday.getDate() - 1);
-
-        const ordersToday = await this.orderRepo
+        const currentPeriodOrders = await this.orderRepo
             .createQueryBuilder('order')
-            .where('order.created_at >= :startToday', { startToday })
+            .where('order.created_at >= :start', { start })
             .getCount();
 
-        const ordersYesterday = await this.orderRepo
+        const previousPeriodOrders = await this.orderRepo
             .createQueryBuilder('order')
-            .where('order.created_at >= :startYesterday', { startYesterday })
-            .andWhere('order.created_at < :startToday', { startToday })
+            .where('order.created_at >= :previousStart', { previousStart })
+            .andWhere('order.created_at < :start', { start })
             .getCount();
 
         let ordersTrendPercent = 0;
-        if (ordersYesterday === 0) {
-            ordersTrendPercent = ordersToday === 0 ? 0 : 100;
+        if (previousPeriodOrders === 0) {
+            ordersTrendPercent = currentPeriodOrders === 0 ? 0 : 100;
         } else {
-            ordersTrendPercent = Math.round(((ordersToday - ordersYesterday) / ordersYesterday) * 100);
+            ordersTrendPercent = Math.round(((currentPeriodOrders - previousPeriodOrders) / previousPeriodOrders) * 100);
         }
 
         return {
@@ -1145,7 +1057,46 @@ export class OrdersService {
             completedToday,
             totalRevenue: Number(revenueResult?.total || 0),
             ordersTrendPercent,
+            period: label,
         };
+    }
+
+    private requiresStatusComment(user: UserEntity | null): boolean {
+        if (!user?.account_settings || typeof user.account_settings !== 'object') {
+            return false;
+        }
+
+        const raw = user.account_settings as Record<string, unknown>;
+        const rolePreferences = raw.role_preferences;
+        if (!rolePreferences || typeof rolePreferences !== 'object' || Array.isArray(rolePreferences)) {
+            return false;
+        }
+
+        return Boolean((rolePreferences as Record<string, unknown>).require_status_comment);
+    }
+
+    private resolveStatsPeriod(period: 'today' | 'week' | 'month') {
+        const now = new Date();
+        const start = new Date(now);
+
+        if (period === 'today') {
+            start.setHours(0, 0, 0, 0);
+        } else if (period === 'month') {
+            start.setMonth(start.getMonth() - 1);
+        } else {
+            start.setDate(start.getDate() - 7);
+        }
+
+        const previousStart = new Date(start);
+        if (period === 'today') {
+            previousStart.setDate(previousStart.getDate() - 1);
+        } else if (period === 'month') {
+            previousStart.setMonth(previousStart.getMonth() - 1);
+        } else {
+            previousStart.setDate(previousStart.getDate() - 7);
+        }
+
+        return { start, previousStart, label: period };
     }
 
     // ===== FIND BY TRACKING TOKEN =====

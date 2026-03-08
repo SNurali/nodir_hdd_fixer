@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from 'bullmq';
 import { NotificationEntity, UserEntity } from '../../database/entities';
+import { isTemplateAllowed } from './notification-preferences';
 
 // Import notification templates
 import * as templates from '../../i18n/notification-templates.json';
@@ -22,6 +23,10 @@ export class NotificationWorker extends WorkerHost {
         super();
     }
 
+    private isTemplateAllowed(user: UserEntity, channel: string, templateKey: string): boolean {
+        return isTemplateAllowed(user, channel as any, templateKey);
+    }
+
     async process(job: Job<{ notificationId: string }>) {
         const { notificationId } = job.data;
 
@@ -36,6 +41,14 @@ export class NotificationWorker extends WorkerHost {
         }
 
         try {
+            if (!this.isTemplateAllowed(notification.user, notification.channel, notification.template_key)) {
+                notification.status = 'sent';
+                notification.sent_at = new Date();
+                await this.notifRepo.save(notification);
+                this.logger.log(`Notification ${notificationId} skipped: channel ${notification.channel} or template ${notification.template_key} disabled by user settings`);
+                return;
+            }
+
             const template = this.getTemplate(
                 notification.template_key,
                 notification.language,
@@ -52,6 +65,9 @@ export class NotificationWorker extends WorkerHost {
                     break;
                 case 'email':
                     await this.sendEmail(notification.user, message);
+                    break;
+                case 'telegram':
+                    await this.sendTelegram(notification.user, message);
                     break;
             }
 
@@ -99,5 +115,10 @@ export class NotificationWorker extends WorkerHost {
     private async sendEmail(user: UserEntity, message: string): Promise<void> {
         // TODO: Integrate Nodemailer SMTP
         this.logger.log(`[EMAIL] → ${user.email}: ${message}`);
+    }
+
+    private async sendTelegram(user: UserEntity, message: string): Promise<void> {
+        // TODO: Integrate Telegram Bot API
+        this.logger.log(`[TELEGRAM] → ${user.telegram}: ${message}`);
     }
 }

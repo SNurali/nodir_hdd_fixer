@@ -9,7 +9,8 @@
         "order_needs_assignment": "Новый заказ ожидает назначения мастера.",
         "price_set": "Стоимость ремонта установлена: {{amount}} UZS. Пожалуйста, подтвердите.",
         "price_approved": "Клиент согласовал стоимость ремонта.",
-        "payment_received": "Получена оплата: {{amount}} {{currency}}."
+        "payment_received": "Получена оплата: {{amount}} {{currency}}.",
+        "marketing_broadcast": "{{message}}"
     },
     "uz-cyr": {
         "order_assigned": "Сизга янги буюртма тайинланди. Илтимос, буюртмалар панелини текширинг.",
@@ -21,7 +22,8 @@
         "order_needs_assignment": "Янги буюртмага уста тайинлаш керак.",
         "price_set": "Таъмирлаш нархи белгиланди: {{amount}} сўм. Илтимос, тасдиқланг.",
         "price_approved": "Мижоз таъмирлаш нархини тасдиқлади.",
-        "payment_received": "Тўлов қабул қилинди: {{amount}} {{currency}}."
+        "payment_received": "Тўлов қабул қилинди: {{amount}} {{currency}}.",
+        "marketing_broadcast": "{{message}}"
     },
     "uz-lat": {
         "order_assigned": "Sizga yangi buyurtma tayinlandi. Iltimos, buyurtmalar panelini tekshiring.",
@@ -33,7 +35,8 @@
         "order_needs_assignment": "Yangi buyurtmaga usta tayinlash kerak.",
         "price_set": "Ta'mirlash narxi belgilandi: {{amount}} so'm. Iltimos, tasdiqlang.",
         "price_approved": "Mijoz ta'mirlash narxini tasdiqladi.",
-        "payment_received": "To'lov qabul qilindi: {{amount}} {{currency}}."
+        "payment_received": "To'lov qabul qilindi: {{amount}} {{currency}}.",
+        "marketing_broadcast": "{{message}}"
     },
     "en": {
         "order_assigned": "A new order has been assigned to you. Please check your dashboard.",
@@ -45,6 +48,7 @@
         "order_needs_assignment": "A new order requires master assignment.",
         "price_set": "Repair cost set: {{amount}} UZS. Please confirm.",
         "price_approved": "Client has approved the repair cost.",
-        "payment_received": "Payment received: {{amount}} {{currency}}."
+        "payment_received": "Payment received: {{amount}} {{currency}}.",
+        "marketing_broadcast": "{{message}}"
     }
 }

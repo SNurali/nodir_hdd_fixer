@@ -4,10 +4,10 @@ import { Repository, ILike } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { existsSync } from 'fs';
 import { unlink } from 'fs/promises';
-import { join } from 'path';
 import { z } from 'zod';
 import { UserEntity, RoleEntity, ClientEntity } from '../../database/entities';
 import { TCreateUserDto, TUpdateUserDto, TPaginationDto, TChangeUserRoleDto } from '@hdd-fixer/shared';
+import { toUploadsFilePath } from '../../common/utils/uploads-path';
 
 type AppRole = 'admin' | 'operator' | 'master' | 'client';
 
@@ -103,7 +103,7 @@ export class UsersService {
         });
         if (!user) throw new NotFoundException('User not found');
         const sanitized = this.sanitize(user) as Record<string, unknown>;
-        sanitized.telegram = await this.getUserTelegram(user.id);
+        sanitized.telegram = user.telegram ?? await this.getClientTelegram(user.id);
         return sanitized;
     }
 
@@ -122,6 +122,7 @@ export class UsersService {
             full_name: dto.full_name,
             email: dto.email || null,
             phone: dto.phone || null,
+            telegram: this.normalizeTelegram(dto.telegram),
             password_hash: passwordHash,
             role_id: dto.role_id,
             preferred_language: dto.preferred_language || 'ru',
@@ -129,6 +130,11 @@ export class UsersService {
             created_by: createdById,
         });
         const saved = await this.userRepo.save(user);
+        const role = await this.userRepo.manager.getRepository(RoleEntity).findOne({ where: { id: dto.role_id } });
+        if (role) {
+            saved.role = role;
+            await this.syncClientProfile(saved);
+        }
         return this.findOne(saved.id);
     }
 
@@ -138,8 +144,11 @@ export class UsersService {
 
         const { telegram, ...userFields } = dto as TUpdateUserDto & { telegram?: string };
         Object.assign(user, userFields);
+        if (telegram !== undefined) {
+            user.telegram = this.normalizeTelegram(telegram);
+        }
         await this.userRepo.save(user);
-        await this.syncClientContact(user, telegram);
+        await this.syncClientProfile(user);
         return this.findOne(id);
     }
 
@@ -263,6 +272,7 @@ export class UsersService {
             role_preferences: roleValidation.data,
         };
         await this.userRepo.save(user);
+        await this.syncClientProfile(user, role);
 
         return {
             role,
@@ -364,21 +374,24 @@ export class UsersService {
         if (!avatarUrl || !avatarUrl.startsWith('/uploads/avatars/')) {
             return null;
         }
-        const relativePath = avatarUrl.replace(/^\/+/, '');
-        return join(process.cwd(), relativePath);
+        return toUploadsFilePath(avatarUrl);
     }
 
-    private async getUserTelegram(userId: string): Promise<string | null> {
+    private async getClientTelegram(userId: string): Promise<string | null> {
         const client = await this.clientRepo.findOne({ where: { user_id: userId } });
         return client?.telegram || null;
     }
 
-    private async syncClientContact(user: UserEntity, telegram?: string): Promise<void> {
+    private async syncClientProfile(user: UserEntity, roleOverride?: AppRole): Promise<void> {
         const client = await this.clientRepo.findOne({ where: { user_id: user.id } });
-        const normalizedTelegram = telegram === undefined ? undefined : this.normalizeTelegram(telegram);
+        const role = roleOverride || this.getRoleName(user);
+
+        if (!client && role !== 'client') {
+            return;
+        }
 
         if (!client) {
-            if (normalizedTelegram === undefined || !user.phone) {
+            if (!user.phone) {
                 return;
             }
             await this.clientRepo.save(
@@ -388,7 +401,7 @@ export class UsersService {
                     phone: user.phone,
                     email: user.email,
                     preferred_language: user.preferred_language || 'ru',
-                    telegram: normalizedTelegram,
+                    telegram: user.telegram || null,
                 }),
             );
             return;
@@ -400,13 +413,11 @@ export class UsersService {
         }
         client.email = user.email;
         client.preferred_language = user.preferred_language || client.preferred_language;
-        if (normalizedTelegram !== undefined) {
-            client.telegram = normalizedTelegram;
-        }
+        client.telegram = user.telegram || null;
         await this.clientRepo.save(client);
     }
 
-    private normalizeTelegram(value: string): string | null {
+    private normalizeTelegram(value: string | undefined): string | null {
         const trimmed = (value || '').trim();
         return trimmed ? trimmed : null;
     }

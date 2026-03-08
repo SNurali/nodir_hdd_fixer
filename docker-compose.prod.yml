@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hdd_fixer_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hdd_fixer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hdd_fixer_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-hdd_fixer_db}
+    ports:
+      - '5436:5432'
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-hdd_fixer} -d ${POSTGRES_DB:-hdd_fixer_db}' ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hdd_fixer_redis_prod
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    volumes:
+      - redisdata_prod:/data
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: hdd_fixer_api_prod
+    restart: unless-stopped
+    ports:
+      - '3004:3004'
+    environment:
+      # Inject environment variables; recommend loading from .env
+      APP_PORT: 3004
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-hdd_fixer}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-hdd_fixer_secret}
+      DB_DATABASE: ${POSTGRES_DB:-hdd_fixer_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Add other necessary prod env variables below, or load natively from .env block
+    env_file:
+      - .env.prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: hdd_fixer_web_prod
+    restart: unless-stopped
+    ports:
+      - '3003:3003'
+    environment:
+      PORT: 3003
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3004/v1}
+    env_file:
+      - .env.prod
+    depends_on:
+      - api
+
+volumes:
+  pgdata_prod:
+  redisdata_prod:

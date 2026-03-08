@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { IssueEntity } from '../../database/entities';
 
 @Injectable()
@@ -26,5 +26,18 @@ export class IssuesService {
         const item = await this.findOne(id);
         Object.assign(item, dto);
         return this.repo.save(item);
+    }
+
+    async remove(id: string) {
+        const item = await this.findOne(id);
+        try {
+            await this.repo.remove(item);
+            return { success: true };
+        } catch (error) {
+            if (error instanceof QueryFailedError && (error as any).driverError?.code === '23503') {
+                throw new ConflictException('Нельзя удалить неисправность, пока она используется в заказах');
+            }
+            throw error;
+        }
     }
 }

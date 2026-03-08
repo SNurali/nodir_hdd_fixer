@@ -17,6 +17,7 @@ import { AuthService } from './auth.service';
 import { UserEntity, ClientEntity, RoleEntity } from '../../database/entities';
 import { UnauthorizedException, ConflictException } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
+import { Language } from '@hdd-fixer/shared';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -167,7 +168,7 @@ describe('AuthService', () => {
                 phone: '+998901234567',
                 email: 'new@example.com',
                 password: 'password123',
-                preferred_language: 'ru',
+                preferred_language: Language.RU,
             };
 
             const result = await service.register(dto);
@@ -185,6 +186,7 @@ describe('AuthService', () => {
                 full_name: 'Existing User',
                 phone: '+998901234567',
                 password: 'password123',
+                preferred_language: Language.RU,
             };
 
             await expect(service.register(dto)).rejects.toThrow(ConflictException);

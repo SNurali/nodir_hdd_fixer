@@ -6,7 +6,7 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { createHash, randomBytes } from 'crypto';
 import { UserEntity, ClientEntity, RoleEntity } from '../../database/entities';
-import { TLoginDto } from '@hdd-fixer/shared';
+import { TLoginDto, TRegisterDto } from '@hdd-fixer/shared';
 import { createLogger } from '../../common/logger/pino.logger';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -25,74 +25,57 @@ export class AuthService {
         private readonly notificationsService: NotificationsService,
     ) { }
 
-    async register(dto: any) {
-        console.log('[AuthService] Register called with:', JSON.stringify(dto));
-
-        try {
-            const existingUser = await this.userRepo.findOne({
-                where: [{ phone: dto.phone }, ...(dto.email ? [{ email: dto.email }] : [])]
-            });
-            if (existingUser) {
-                throw new ConflictException('User already exists');
-            }
-
-            // Get client role
-            const clientRole = await this.roleRepo.findOne({
-                where: { name_eng: 'client' },
-            });
-            console.log('[AuthService] Client role:', clientRole);
-
-            if (!clientRole) {
-                throw new Error('Client role not found');
-            }
-
-            // Hash password
-            const passwordHash = await bcrypt.hash(dto.password, 10);
-            console.log('[AuthService] Password hashed');
-
-            // Create user
-            const user = this.userRepo.create({
-                full_name: dto.full_name,
-                phone: dto.phone,
-                email: dto.email || null,
-                password_hash: passwordHash,
-                role_id: clientRole.id,
-                preferred_language: dto.preferred_language || 'ru',
-            });
-
-            console.log('[AuthService] User entity created, saving...');
-            await this.userRepo.save(user);
-            console.log('[AuthService] User saved:', user.id);
-
-            // Create client record
-            const client = this.clientRepo.create({
-                user_id: user.id,
-                full_name: dto.full_name,
-                phone: dto.phone,
-                telegram: dto.telegram?.trim() || null,
-                email: dto.email || null,
-                preferred_language: dto.preferred_language || 'ru',
-            });
-            await this.clientRepo.save(client);
-            console.log('[AuthService] Client created:', client.id);
-
-            // Generate tokens
-            const tokens = this.generateTokens(user.id, clientRole.id, 'client');
-            console.log('[AuthService] Tokens generated');
-
-            return {
-                ...tokens,
-                user: {
-                    id: user.id,
-                    full_name: user.full_name,
-                    role: 'client',
-                    avatar_url: user.avatar_url,
-                },
-            };
-        } catch (error) {
-            console.error('[AuthService] Error:', error);
-            throw error;
+    async register(dto: TRegisterDto) {
+        const existingUser = await this.userRepo.findOne({
+            where: [{ phone: dto.phone }, ...(dto.email ? [{ email: dto.email }] : [])],
+        });
+        if (existingUser) {
+            throw new ConflictException('User already exists');
         }
+
+        const clientRole = await this.roleRepo.findOne({
+            where: { name_eng: 'client' },
+        });
+
+        if (!clientRole) {
+            this.logger.error('Client role missing during registration');
+            throw new Error('Client role not found');
+        }
+
+        const passwordHash = await bcrypt.hash(dto.password, 10);
+        const user = this.userRepo.create({
+            full_name: dto.full_name,
+            phone: dto.phone,
+            email: dto.email || null,
+            telegram: dto.telegram?.trim() || null,
+            password_hash: passwordHash,
+            role_id: clientRole.id,
+            preferred_language: dto.preferred_language || 'ru',
+        });
+
+        await this.userRepo.save(user);
+
+        const client = this.clientRepo.create({
+            user_id: user.id,
+            full_name: dto.full_name,
+            phone: dto.phone,
+            telegram: dto.telegram?.trim() || null,
+            email: dto.email || null,
+            preferred_language: dto.preferred_language || 'ru',
+        });
+        await this.clientRepo.save(client);
+
+        const tokens = this.generateTokens(user.id, clientRole.id, 'client');
+
+        return {
+            ...tokens,
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                role: 'client',
+                avatar_url: user.avatar_url,
+            },
+        };
     }
 
     async login(dto: TLoginDto) {

@@ -1,0 +1,62 @@
+import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'fs';
+import { resolve, isAbsolute, join } from 'path';
+
+// Resolve paths from the repository root so uploads do not depend on process.cwd().
+const API_ROOT_DIR = resolve(__dirname, '..', '..', '..');
+const WORKSPACE_ROOT_DIR = resolve(API_ROOT_DIR, '..', '..');
+const DEFAULT_UPLOADS_DIR = join(WORKSPACE_ROOT_DIR, 'uploads');
+const LEGACY_UPLOADS_DIR = join(API_ROOT_DIR, 'uploads');
+
+export function getUploadsDir(): string {
+    const configuredPath = process.env.UPLOADS_DIR?.trim();
+
+    if (!configuredPath) {
+        return DEFAULT_UPLOADS_DIR;
+    }
+
+    return isAbsolute(configuredPath)
+        ? configuredPath
+        : resolve(WORKSPACE_ROOT_DIR, configuredPath);
+}
+
+export function getAvatarUploadsDir(): string {
+    return join(getUploadsDir(), 'avatars');
+}
+
+export function toUploadsFilePath(uploadUrl: string | null | undefined): string | null {
+    if (!uploadUrl || !uploadUrl.startsWith('/uploads/')) {
+        return null;
+    }
+
+    const relativePath = uploadUrl.replace(/^\/uploads\/?/, '');
+    return join(getUploadsDir(), relativePath);
+}
+
+export function migrateLegacyUploads(): void {
+    const uploadsDir = getUploadsDir();
+
+    if (!existsSync(LEGACY_UPLOADS_DIR) || LEGACY_UPLOADS_DIR === uploadsDir) {
+        return;
+    }
+
+    copyDirectoryContents(LEGACY_UPLOADS_DIR, uploadsDir);
+}
+
+function copyDirectoryContents(sourceDir: string, targetDir: string): void {
+    mkdirSync(targetDir, { recursive: true });
+
+    for (const entry of readdirSync(sourceDir)) {
+        const sourcePath = join(sourceDir, entry);
+        const targetPath = join(targetDir, entry);
+        const stat = statSync(sourcePath);
+
+        if (stat.isDirectory()) {
+            copyDirectoryContents(sourcePath, targetPath);
+            continue;
+        }
+
+        if (!existsSync(targetPath)) {
+            copyFileSync(sourcePath, targetPath);
+        }
+    }
+}

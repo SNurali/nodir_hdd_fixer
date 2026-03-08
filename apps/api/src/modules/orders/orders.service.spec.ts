@@ -1,5 +1,4 @@
 import { vi } from 'vitest';
-const jest = vi;
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -11,20 +10,28 @@ import {
   OrderPriceHistoryEntity,
   ClientEntity,
   UserEntity,
-  NotificationEntity,
 } from '../../database/entities';
 import { AuditService } from './audit.service';
+import { OrdersNotificationsService } from './orders-notifications.service';
 import { StateMachineService } from './state-machine.service';
-import { NotificationsService } from '../notifications/notifications.service';
 import { validateTransitionRequirements } from './order-state-machine';
 import { BadRequestException } from '@nestjs/common';
 
 describe('OrdersService - Business Logic', () => {
   let service: OrdersService;
+  const mockRevenueQueryBuilder = {
+    select: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    andWhere: vi.fn().mockReturnThis(),
+    getRawOne: vi.fn(),
+    getCount: vi.fn(),
+  };
 
   const mockOrderRepo = {
     findOne: vi.fn(),
     save: vi.fn(),
+    count: vi.fn(),
+    createQueryBuilder: vi.fn(() => mockRevenueQueryBuilder),
   };
   const mockDetailRepo = {
     find: vi.fn(),
@@ -38,10 +45,22 @@ describe('OrdersService - Business Logic', () => {
   const mockLifecycleRepo = {
     create: vi.fn(),
     save: vi.fn(),
+    count: vi.fn(),
+  };
+  const mockUserRepo = {
+    findOne: vi.fn(),
   };
   const mockAuditService = { logStatusChange: vi.fn() };
-  const mockStateMachine = {};
-  const mockNotifications = { sendNotification: vi.fn() };
+  const mockStateMachine = {
+    transitionToStatus: vi.fn(async (_id: string, status: string) => ({ status })),
+  };
+  const mockOrdersNotifications = {
+    queueTemplateToUser: vi.fn(),
+    notifyClient: vi.fn(),
+    notifyAdmins: vi.fn(),
+    notifyClientStatusChange: vi.fn(),
+    notifyClientStatusChangeByUserId: vi.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -52,12 +71,10 @@ describe('OrdersService - Business Logic', () => {
         { provide: getRepositoryToken(OrderLifecycleEntity), useValue: mockLifecycleRepo },
         { provide: getRepositoryToken(OrderPriceHistoryEntity), useValue: mockPriceHistoryRepo },
         { provide: getRepositoryToken(ClientEntity), useValue: {} },
-        { provide: getRepositoryToken(UserEntity), useValue: {} },
-        { provide: getRepositoryToken(NotificationEntity), useValue: {} },
-        { provide: 'BullQueue_notifications', useValue: { add: vi.fn() } }, // inject queue
+        { provide: getRepositoryToken(UserEntity), useValue: mockUserRepo },
         { provide: AuditService, useValue: mockAuditService },
+        { provide: OrdersNotificationsService, useValue: mockOrdersNotifications },
         { provide: StateMachineService, useValue: mockStateMachine },
-        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
@@ -66,12 +83,58 @@ describe('OrdersService - Business Logic', () => {
     vi.clearAllMocks();
 
     // Mock out side-effect methods to keep unit tests isolated
-    (service as any).notifyClient = vi.fn();
-    (service as any).notifyClientStatusChange = vi.fn();
     (service as any).addLifecycle = vi.fn();
     (service as any).auditService = mockAuditService;
+    (service as any).ordersNotificationsService = mockOrdersNotifications;
     (service as any).stateMachineService = mockStateMachine;
-    (service as any).notificationsService = mockNotifications;
+  });
+
+  describe('updateOrder', () => {
+    it('should require comment when user settings demand it', async () => {
+      mockOrderRepo.findOne.mockResolvedValue({
+        id: 'ord-1',
+        status: 'assigned',
+        details: [{ attached_to: 'master-1', is_completed: 0 }],
+        client: { user_id: 'client-1' },
+        price_approved_at: null,
+        total_price_uzs: 1000,
+        total_paid_uzs: 0,
+        language: 'ru',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'admin-1',
+        role: { name_eng: 'admin' },
+        account_settings: {
+          role_preferences: {
+            require_status_comment: true,
+          },
+        },
+      });
+
+      await expect(
+        service.updateOrder('ord-1', { status: 'diagnosing' }, 'admin-1', 'admin'),
+      ).rejects.toThrow('Комментарий обязателен при смене статуса');
+    });
+  });
+
+  describe('getStats', () => {
+    it('should request stats for selected period and return period label', async () => {
+      mockOrderRepo.count
+        .mockResolvedValueOnce(12)
+        .mockResolvedValueOnce(7);
+      mockLifecycleRepo.count.mockResolvedValue(3);
+      mockRevenueQueryBuilder.getRawOne.mockResolvedValue({ total: 500000 });
+      mockRevenueQueryBuilder.getCount
+        .mockResolvedValueOnce(8)
+        .mockResolvedValueOnce(4);
+
+      const result = await service.getStats('month');
+
+      expect(mockOrderRepo.count).toHaveBeenCalledTimes(2);
+      expect(result.period).toBe('month');
+      expect(result.totalRevenue).toBe(500000);
+      expect(result.ordersTrendPercent).toBe(100);
+    });
   });
 
   describe('setPrice', () => {

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { BullModule } from '@nestjs/bullmq';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { OrdersNotificationsService } from './orders-notifications.service';
 import { StateMachineService } from './state-machine.service';
 import { AuditService } from './audit.service';
 import { SlaService } from './sla.service';
@@ -13,7 +13,6 @@ import {
     OrderPriceHistoryEntity,
     ClientEntity,
     UserEntity,
-    NotificationEntity,
 } from '../../database/entities';
 
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -28,12 +27,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
             OrderPriceHistoryEntity,
             ClientEntity,
             UserEntity,
-            NotificationEntity,
         ]),
-        BullModule.registerQueue({ name: 'notifications' }),
     ],
     controllers: [OrdersController],
-    providers: [OrdersService, StateMachineService, AuditService, SlaService],
-    exports: [OrdersService, StateMachineService, AuditService, SlaService],
+    providers: [OrdersService, OrdersNotificationsService, StateMachineService, AuditService, SlaService],
+    exports: [OrdersService, OrdersNotificationsService, StateMachineService, AuditService, SlaService],
 })
 export class OrdersModule { }

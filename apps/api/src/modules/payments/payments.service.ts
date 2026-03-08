@@ -4,7 +4,6 @@ import { Repository, DataSource } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PaymentEntity, OrderEntity, UserEntity, NotificationEntity, ClientEntity } from '../../database/entities';
-import { TCreatePaymentDto } from '@hdd-fixer/shared';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -215,12 +214,12 @@ export class PaymentsService {
             payment.currency = nextCurrency;
             payment.payment_type = dto.payment_type || payment.payment_type;
 
-            const savedPayment = await queryRunner.manager.save(payment);
+            const updatedPayment = await queryRunner.manager.save(payment);
             await queryRunner.manager.save(order);
 
             await queryRunner.commitTransaction();
             this.logger.log(`Payment updated: ${paymentId}`);
-            return savedPayment;
+            return updatedPayment;
         } catch (error) {
             await queryRunner.rollbackTransaction();
             this.logger.error(`Payment update failed: ${error.message}`);
@@ -377,7 +376,7 @@ export class PaymentsService {
                     provider: 'click',
                 });
 
-                const savedPayment = await queryRunner.manager.save(payment);
+                await queryRunner.manager.save(payment);
                 
                 // Update order total paid amount
                 const order = await queryRunner.manager.findOne(OrderEntity, { where: { id: orderId } });
@@ -551,7 +550,7 @@ export class PaymentsService {
                 provider: 'payme',
             });
 
-            const savedPayment = await queryRunner.manager.save(payment);
+            await queryRunner.manager.save(payment);
             
             // Update order total paid amount
             const order = await queryRunner.manager.findOne(OrderEntity, { where: { id: order_id } });

@@ -52,7 +52,6 @@ export class JwtAuthGuard implements CanActivate {
         try {
             const secret = this.configService.get<string>('JWT_SECRET');
             const payload = jwt.verify(token, secret!) as JwtPayload;
-            console.log(`[AUTH DEBUG] Payload sub: ${payload.sub}`);
 
             const user = await this.userRepo.findOne({
                 where: { id: payload.sub },
@@ -60,11 +59,9 @@ export class JwtAuthGuard implements CanActivate {
             });
 
             if (!user) {
-                console.log(`[AUTH DEBUG] User not found for sub: ${payload.sub}`);
                 if (isPublic) return true;
                 throw new UnauthorizedException('User not found');
             }
-            console.log(`[AUTH DEBUG] Found user: ${user.phone} with role: ${user.role.name_eng}`);
 
             request.user = {
                 id: user.id,

@@ -5,12 +5,12 @@ import helmet from 'helmet';
 import * as compression from 'compression';
 import * as cookieParser from 'cookie-parser';
 import { existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
 
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { createLogger } from './common/logger/pino.logger';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { getUploadsDir, migrateLegacyUploads } from './common/utils/uploads-path';
 
 async function bootstrap() {
     const logger = createLogger('NestApplication');
@@ -56,7 +56,8 @@ async function bootstrap() {
     // Global prefix
     app.setGlobalPrefix('v1', { exclude: ['/'] });
 
-    const uploadsDir = join(process.cwd(), 'uploads');
+    const uploadsDir = getUploadsDir();
+    migrateLegacyUploads();
     if (!existsSync(uploadsDir)) {
         mkdirSync(uploadsDir, { recursive: true });
     }
@@ -76,6 +77,7 @@ async function bootstrap() {
     await app.listen(port);
     logger.log(`API running on http://localhost:${port}`);
     logger.log(`Allowed CORS origin: ${webUrl}`);
+    logger.log(`Uploads dir: ${uploadsDir}`);
     logger.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }
 

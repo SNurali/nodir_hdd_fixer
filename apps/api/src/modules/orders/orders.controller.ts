@@ -13,7 +13,6 @@ import {
     CreateOrderDto, UpdateOrderDto, SetPriceDto, UpdateTotalPriceDto,
     AssignMasterDto, CompleteDetailDto, CreateLifecycleDto, PaginationDto,
 } from '@hdd-fixer/shared';
-import { UpdatePriceDto } from './dto/update-price.dto';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -63,8 +62,8 @@ export class OrdersController {
     @Get('stats')
     @Roles('admin', 'operator')
     @ApiOperation({ summary: 'Get dashboard statistics' })
-    getStats() {
-        return this.ordersService.getStats();
+    getStats(@Query('period') period?: 'today' | 'week' | 'month') {
+        return this.ordersService.getStats(period);
     }
 
     @Get(':id')

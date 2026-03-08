@@ -87,7 +87,7 @@ export class StateMachineService {
     currentStatus: string,
     newStatus: string,
     actor: UserEntity,
-    additionalData?: any,
+    _additionalData?: unknown,
   ): void {
     if (currentStatus === newStatus) return;
 
@@ -102,10 +102,10 @@ export class StateMachineService {
   }
 
   private async checkBusinessRules(
-    order: OrderEntity,
-    newStatus: string,
-    additionalData?: any,
-    manager?: any,
+    _order: OrderEntity,
+    _newStatus: string,
+    _additionalData?: unknown,
+    _manager?: unknown,
   ): Promise<void> {
     // Requirements validation is handled dynamically in orders.service.ts
     // via validateTransitionRequirements from order-state-machine.ts
@@ -117,7 +117,7 @@ export class StateMachineService {
     fromStatus: string | null,
     actor: UserEntity,
     reason?: string,
-    manager?: any,
+    manager?: { getRepository: (entity: typeof OrderLifecycleEntity) => Repository<OrderLifecycleEntity> },
   ): Promise<void> {
     const repo = manager ? manager.getRepository(OrderLifecycleEntity) : this.lifecycleRepo;
     const baseReason = reason || `Статус изменён с "${fromStatus || 'unknown'}" на "${newStatus}"`;
