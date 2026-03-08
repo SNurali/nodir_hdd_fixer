@@ -88,7 +88,11 @@ export class UsersController {
             storage: diskStorage({
                 destination: (_req, _file, cb) => {
                     const avatarUploadDir = getAvatarUploadsDir();
-                    mkdirSync(avatarUploadDir, { recursive: true });
+                    try {
+                        mkdirSync(avatarUploadDir, { recursive: true });
+                    } catch (error) {
+                        console.warn('Failed to create avatar upload directory:', error);
+                    }
                     cb(null, avatarUploadDir);
                 },
                 filename: (_req, file, cb) => {

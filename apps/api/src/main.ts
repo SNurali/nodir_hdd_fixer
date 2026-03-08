@@ -14,6 +14,10 @@ import { getUploadsDir, migrateLegacyUploads } from './common/utils/uploads-path
 
 // Serverless detection: Vercel, AWS Lambda, etc.
 function isServerless(): boolean {
+    try {
+        const cwd = process.cwd();
+        if (cwd.includes('/var/task') || cwd.includes('/vercel')) return true;
+    } catch (e) {}
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
 }
 
@@ -67,7 +71,11 @@ async function bootstrap() {
     // In serverless environments, the filesystem is read-only, so we skip static assets
     if (!isServerless()) {
         if (!existsSync(uploadsDir)) {
-            mkdirSync(uploadsDir, { recursive: true });
+            try {
+                mkdirSync(uploadsDir, { recursive: true });
+            } catch (error) {
+                console.warn('Failed to create uploads directory:', error);
+            }
         }
         app.useStaticAssets(uploadsDir, { prefix: '/uploads/' });
     }

@@ -2,7 +2,14 @@ import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { resolve, isAbsolute, join } from 'path';
 
 // Serverless detection: Vercel, AWS Lambda, etc.
-const isServerless = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+const isServerlessEnvironment = () => {
+    try {
+        const cwd = process.cwd();
+        if (cwd.includes('/var/task') || cwd.includes('/vercel')) return true;
+    } catch (e) {}
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+};
+const isServerless = isServerlessEnvironment();
 
 // Resolve paths from the repository root so uploads do not depend on process.cwd().
 const API_ROOT_DIR = resolve(__dirname, '..', '..', '..');
@@ -56,7 +63,12 @@ export function migrateLegacyUploads(): void {
 }
 
 function copyDirectoryContents(sourceDir: string, targetDir: string): void {
-    mkdirSync(targetDir, { recursive: true });
+    try {
+        mkdirSync(targetDir, { recursive: true });
+    } catch (error) {
+        console.warn(`Failed to create target directory ${targetDir}:`, error);
+        return;
+    }
 
     for (const entry of readdirSync(sourceDir)) {
         const sourcePath = join(sourceDir, entry);

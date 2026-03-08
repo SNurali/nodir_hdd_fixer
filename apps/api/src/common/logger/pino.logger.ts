@@ -6,6 +6,10 @@ import * as path from 'path';
 // Serverless detection: Vercel, AWS Lambda, etc.
 // Check at module load time AND runtime
 const checkIsServerless = () => {
+  try {
+    const cwd = process.cwd();
+    if (cwd.includes('/var/task') || cwd.includes('/vercel')) return true;
+  } catch (e) {}
   return process.env.NODE_ENV === 'production' ||
          !!process.env.VERCEL || 
          !!process.env.AWS_LAMBDA_FUNCTION_NAME || 
@@ -21,6 +25,11 @@ const getLogDir = () => {
 
 // Create file streams only if we have a writable log directory
 const getFileStreams = () => {
+  // Aggressive check: NEVER write to files in production/serverless to avoid EROFS / ENOENT errors
+  if (process.env.NODE_ENV === 'production' || checkIsServerless()) {
+    return [];
+  }
+
   try {
     const logDir = getLogDir();
     if (!logDir) return [];
