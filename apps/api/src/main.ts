@@ -14,7 +14,7 @@ import { getUploadsDir, migrateLegacyUploads } from './common/utils/uploads-path
 
 // Serverless detection: Vercel, AWS Lambda, etc.
 function isServerless(): boolean {
-    return !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
 }
 
 async function bootstrap() {

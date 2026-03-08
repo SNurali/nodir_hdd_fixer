@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { resolve, isAbsolute, join } from 'path';
 
 // Serverless detection: Vercel, AWS Lambda, etc.
-const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+const isServerless = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
 
 // Resolve paths from the repository root so uploads do not depend on process.cwd().
 const API_ROOT_DIR = resolve(__dirname, '..', '..', '..');

@@ -6,10 +6,10 @@ import * as path from 'path';
 // Serverless detection: Vercel, AWS Lambda, etc.
 // Check at module load time AND runtime
 const checkIsServerless = () => {
-  return !!process.env.VERCEL || 
+  return process.env.NODE_ENV === 'production' ||
+         !!process.env.VERCEL || 
          !!process.env.AWS_LAMBDA_FUNCTION_NAME || 
-         !!process.env.CF_PAGES ||
-         !process.env.NODE_ENV; // Fallback for undefined environments
+         !!process.env.CF_PAGES;
 };
 
 // In serverless, we can only write to stdout (file system is read-only or ephemeral)
