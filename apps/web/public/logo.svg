@@ -1,0 +1,33 @@
+<svg width="100" height="40" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="50%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect x="0" y="0" width="200" height="80" rx="12" fill="url(#logoGradient)" opacity="0.1"/>
+  
+  <!-- Main shape -->
+  <g transform="translate(20, 20)">
+    <!-- HDD Icon -->
+    <rect x="0" y="5" width="30" height="20" rx="3" fill="url(#logoGradient)"/>
+    <rect x="2" y="7" width="26" height="16" rx="2" fill="white" opacity="0.2"/>
+    <circle cx="15" cy="15" r="4" stroke="white" stroke-width="1.5" fill="none"/>
+    
+    <!-- Screw details -->
+    <circle cx="5" cy="8" r="1.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="25" cy="8" r="1.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="5" cy="22" r="1.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="25" cy="22" r="1.5" stroke="white" stroke-width="1" fill="none"/>
+    
+    <!-- Text -->
+    <text x="40" y="22" font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#1F2937" letter-spacing="-.5">Recovery</text>
+    <text x="120" y="22" font-family="Arial, sans-serif" font-weight="normal" font-size="18" fill="#6B7280" letter-spacing="-.5">.uz</text>
+  </g>
+  
+  <!-- Subtitle -->
+  <text x="20" y="55" font-family="Arial, sans-serif" font-size="8" fill="#9CA3AF" letter-spacing="0.5">WE REVIVE YOUR DATA</text>
+</svg>
