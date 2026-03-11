@@ -48,8 +48,8 @@ export function NewOrderStepContact({
   onKeepProfileContacts,
 }: NewOrderStepContactProps) {
   const handlePhoneChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value.replace(/[^+\d]/g, '');
-    onPhoneChange(value);
+    const digits = event.target.value.replace(/\D/g, '').slice(0, 9);
+    onPhoneChange('+998' + digits);
   };
 
   return (

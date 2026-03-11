@@ -23,7 +23,7 @@ export default function RegisterPage() {
   const [mounted, setMounted] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
-    phone: '',
+    phone: '+998',
     email: '',
     telegram: '',
     password: '',
@@ -227,8 +227,7 @@ export default function RegisterPage() {
                     type="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+998 90 123-45-67"
+                    onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); const digits = val.slice(0, 9); setFormData({ ...formData, phone: '+998' + digits }); }}
                     className="input-field pl-12"
                     disabled={loading}
                   />

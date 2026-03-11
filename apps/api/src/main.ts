@@ -2,8 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import compression from 'compression';
-import cookieParser from 'cookie-parser';
+import * as compression from 'compression';
+import * as cookieParser from 'cookie-parser';
 import { existsSync, mkdirSync } from 'fs';
 
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -55,6 +55,9 @@ async function bootstrap() {
             webUrl,
             'http://localhost:3003',
             'http://127.0.0.1:3003',
+            'http://172.16.252.32:3003',
+            'http://195.158.24.137:3003',
+            /https?:\/\/(?:\d{1,3}\.){3}\d{1,3}:3003/,  // Любые IP на порту 3003
         ],
         credentials: true,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -91,8 +94,8 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
 
     const port = configService.get('APP_PORT', 3004);
-    await app.listen(port);
-    logger.log(`API running on http://localhost:${port}`);
+    await app.listen(port, '0.0.0.0');
+    logger.log(`API running on http://0.0.0.0:${port}`);
     logger.log(`Allowed CORS origin: ${webUrl}`);
     logger.log(`Uploads dir: ${uploadsDir}`);
     logger.log(`Swagger docs at http://localhost:${port}/api/docs`);
@@ -113,6 +116,16 @@ process.on('uncaughtException', (error) => {
 
 bootstrap().catch(err => {
     const logger = createLogger('Bootstrap');
-    logger.error('Failed to start application', { error: err });
+    logger.error('Failed to start application', { 
+        error: err,
+        message: err?.message,
+        stack: err?.stack,
+        name: err?.name,
+        code: (err as any)?.code,
+        syscall: (err as any)?.syscall,
+        address: (err as any)?.address,
+        port: (err as any)?.port,
+    });
+    console.error('FULL ERROR:', err);
     process.exit(1);
 });

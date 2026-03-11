@@ -248,26 +248,38 @@ export class AuthService {
     getCookieOptions() {
         const isProduction = this.config.get('NODE_ENV') === 'production';
         const webUrl = this.config.get('WEB_URL', 'http://localhost:3000');
+        const webUrlObj = new URL(webUrl);
+
+        // Don't set domain for localhost or when accessing via IP directly
+        const isLocalhost = webUrlObj.hostname === 'localhost' || webUrlObj.hostname === '127.0.0.1';
+        const setDomain = isProduction && !isLocalhost;
 
         return {
             httpOnly: true,
-            secure: isProduction,
+            secure: false, // Allow cookies over HTTP for local network access
             sameSite: 'lax' as const,
             path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            domain: isProduction ? new URL(webUrl).hostname : undefined,
+            domain: setDomain ? webUrlObj.hostname : undefined,
         };
     }
 
     getAccessTokenCookieOptions() {
         const isProduction = this.config.get('NODE_ENV') === 'production';
+        const webUrl = this.config.get('WEB_URL', 'http://localhost:3000');
+        const webUrlObj = new URL(webUrl);
+
+        // Don't set domain for localhost or when accessing via IP directly
+        const isLocalhost = webUrlObj.hostname === 'localhost' || webUrlObj.hostname === '127.0.0.1';
+        const setDomain = isProduction && !isLocalhost;
 
         return {
             httpOnly: true,
-            secure: isProduction,
+            secure: false, // Allow cookies over HTTP for local network access
             sameSite: 'lax' as const,
             path: '/',
             maxAge: 15 * 60 * 1000, // 15 minutes
+            domain: setDomain ? webUrlObj.hostname : undefined,
         };
     }
 }

@@ -108,3 +108,43 @@ export function getEntityDisplayName(item: unknown, fallback = 'Не выбра�
 
   return typeof localizedName === 'string' ? localizedName : fallback;
 }
+
+/**
+ * Returns phone with +998 prefix if user has not started typing yet.
+ * Use this for defaultValue or when field is empty.
+ */
+export function formatPhoneWithDefault(defaultPhone = ''): string {
+  if (defaultPhone) return defaultPhone;
+  return '+998';
+}
+
+/**
+ * Formats phone input value, ensuring +998 prefix is maintained.
+ * Use this in onChange handlers.
+ */
+export function formatPhoneInput(value: string): string {
+  // Keep only digits and +
+  let cleaned = value.replace(/[^\d+]/g, '');
+  
+  // Ensure starts with +
+  if (!cleaned.startsWith('+')) {
+    cleaned = '+' + cleaned;
+  }
+  
+  if (!cleaned.startsWith('+998')) {
+    // If user typed something else, replace with +998 + their digits
+    const digits = cleaned.replace(/\D/g, '').slice(0, 12);
+    if (digits.length <= 3) {
+      cleaned = '+998' + digits.replace(/^998/, '');
+    } else {
+      cleaned = '+' + digits;
+    }
+  }
+  
+  // Limit to +998 + 9 digits = 12 chars total
+  if (cleaned.length > 12) {
+    cleaned = cleaned.slice(0, 12);
+  }
+  
+  return cleaned;
+}

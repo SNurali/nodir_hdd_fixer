@@ -80,7 +80,7 @@ export default function NewOrderPage() {
      equipment_id: '',
      issue_id: '',
      description: '',
-     phone: '',
+     phone: '+998',
      full_name: '',
      telegram: '',
      preferred_language: 'ru'
