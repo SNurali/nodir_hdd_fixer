@@ -23,6 +23,9 @@ interface User {
     avatar_url: string | null;
 }
 
+const AUTH_STORAGE_KEY = 'auth_user';
+const SESSION_MARKER_COOKIE = 'hdd_fixer_session';
+
 function normalizeRole(role: ApiRole): Role {
     if (!role) {
         return null;
@@ -67,7 +70,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(() => {
         if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('auth_user');
+            const saved = localStorage.getItem(AUTH_STORAGE_KEY);
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -83,6 +86,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         let isMounted = true;
+
+        const clearClientAuthState = () => {
+            setUser(null);
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+            document.cookie = `${SESSION_MARKER_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
+        };
+
+        const hasSessionMarker = document.cookie
+            .split(';')
+            .map((part) => part.trim())
+            .some((cookie) => cookie === `${SESSION_MARKER_COOKIE}=1`);
+
+        const hasStoredUser = !!localStorage.getItem(AUTH_STORAGE_KEY);
+
+        if (!hasSessionMarker && !hasStoredUser) {
+            setIsLoading(false);
+            return () => {
+                isMounted = false;
+            };
+        }
 
         const syncAuthFromServer = async () => {
             try {
@@ -107,9 +130,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (!isMounted) return;
                 setUser(syncedUser);
                 if (syncedUser) {
-                    localStorage.setItem('auth_user', JSON.stringify(syncedUser));
+                    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(syncedUser));
                 } else {
-                    localStorage.removeItem('auth_user');
+                    clearClientAuthState();
                 }
             } catch (error) {
                 if (!isMounted) return;
@@ -118,8 +141,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     error instanceof Error &&
                     error.message === 'UNAUTHORIZED'
                 ) {
-                    setUser(null);
-                    localStorage.removeItem('auth_user');
+                    clearClientAuthState();
                 }
             } finally {
                 if (isMounted) {
@@ -140,7 +162,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userData = normalizeUser(data.user);
         setUser(userData);
         if (userData) {
-            localStorage.setItem('auth_user', JSON.stringify(userData));
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
         }
     };
 
@@ -153,7 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 role: patch.role === undefined ? prev.role : normalizeRole(patch.role as ApiRole),
                 avatar_url: patch.avatar_url === undefined ? prev.avatar_url : patch.avatar_url,
             };
-            localStorage.setItem('auth_user', JSON.stringify(next));
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
             return next;
         });
     };
@@ -163,7 +185,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             await api.post('/auth/logout');
         } finally {
             setUser(null);
-            localStorage.removeItem('auth_user');
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+            document.cookie = `${SESSION_MARKER_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
         }
     };
 

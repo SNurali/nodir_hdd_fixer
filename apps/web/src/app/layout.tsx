@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning data-scroll-behavior="smooth">
       <body className={`${inter.className} antialiased transition-colors duration-300 bg-[var(--color-background)] text-[var(--color-foreground)]`}>
         <Providers>
           <div className="fixed top-4 right-4 z-50">

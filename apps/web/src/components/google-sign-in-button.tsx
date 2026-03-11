@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Chrome } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 interface GoogleSignInButtonProps {
   onClick?: () => void;
@@ -13,7 +14,10 @@ interface GoogleSignInButtonProps {
 // Проверка доступности Google OAuth на бэкенде
 async function checkGoogleOAuthConfig(): Promise<boolean> {
   try {
-    const response = await fetch("/v1/auth/google/config");
+    const apiBaseUrl = getApiBaseUrl();
+    const response = await fetch(`${apiBaseUrl}/auth/google/config`, {
+      credentials: 'include',
+    });
     if (response.ok) {
       const data = await response.json();
       return data.enabled === true;

@@ -1,157 +1,107 @@
-# 🤖 ИНСТРУКЦИЯ ДЛЯ ИИ-АГЕНТА НА СЕРВЕРЕ
+# AI Agent Server Instruction
 
-## 📋 Проблема
-На сервере запущен **только API** (NestJS, порт 3004), но **не запущен frontend** (Next.js, порт 3003).
+## Goal
 
-## 🔍 Как проверить что работает
+Deploy and run `nodir_hdd_fixer` on the target server with predictable behavior.
 
-```bash
-# Проверить API (должен отвечать)
-curl http://localhost:3004/v1/health
+Repository layout:
 
-# Проверить frontend (скорее всего НЕ отвечает)
-curl http://localhost:3003
+```text
+nodir_hdd_fixer/
+├── apps/api        # NestJS API
+├── apps/web        # Next.js frontend
+├── packages/shared # shared types
+├── package.json    # root scripts
+└── turbo.json
 ```
 
-## 🚀 Решение
+## Important facts
 
-### Вариант 1: Запустить через npm (как на локалке)
+1. Always work from the repository root, not from `apps/`.
+2. Root `npm run dev` now uses `scripts/dev.js`.
+   It pre-checks port `3004` and kills only stale local API processes from this repo before starting Turbo.
+3. Anonymous browser sessions may call `/v1/users/me`.
+   A `401 Unauthorized` for an unauthenticated visitor is expected and is not a backend crash.
+4. Next.js root warning about lockfiles is already handled by `apps/web/next.config.ts` via `outputFileTracingRoot`.
+5. Google OAuth callback base URL now uses `API_BASE_URL` when present.
+
+## Current deployment blocker
+
+At the time of this instruction, `npm run build:web` still fails on an existing frontend issue unrelated to the latest auth/dev fixes:
+
+- repeated React "unique key" warnings during prerender
+- prerender failure on `/_global-error`
+- error shape: `Cannot read properties of null (reading 'useContext')`
+
+Do not waste time debugging anonymous `401` logs or the removed scroll-behavior warning.
+If the task is strict production build deployment, fix the `/_global-error` prerender issue first.
+
+## Development startup
 
 ```bash
-# 1. Перейди в КОРЕНЬ проекта (НЕ в apps!)
 cd /path/to/nodir_hdd_fixer
-
-# 2. Установи зависимости (если ещё не установлены)
 npm install
-
-# 3. Запусти ВСЁ сразу (API + Frontend)
 npm run dev
 ```
 
-**Что запустится:**
-- `apps/api` → http://localhost:3004 (NestJS API)
-- `apps/web` → http://localhost:3003 (Next.js Frontend)
+Expected services:
 
----
+- web: `http://localhost:3003`
+- api: `http://localhost:3004`
+- swagger: `http://localhost:3004/api/docs`
+- health: `http://localhost:3004/v1/health`
 
-### Вариант 2: Запустить только frontend
+## Production-style startup
 
-```bash
-cd /path/to/nodir_hdd_fixer
-npm run dev:web
-```
-
----
-
-### Вариант 3: Docker (для продакшена)
+If you are deploying with Docker:
 
 ```bash
 cd /path/to/nodir_hdd_fixer
-
-# 1. Создай .env.prod из примера
 cp .env.production.example .env.prod
-
-# 2. Отредактируй .env.prod (задай секреты, пароли)
-nano .env.prod
-
-# 3. Запусти через docker compose
+# fill real secrets in .env.prod
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
----
+If you are deploying without Docker, use this order:
 
-## 📁 Структура проекта
-
-```
-nodir_hdd_fixer/
-├── apps/
-│   ├── api/     # NestJS API (порт 3004)
-│   └── web/     # Next.js Frontend (порт 3003) ← ЭТО НУЖНО ЗАПУСТИТЬ
-├── packages/
-│   └── shared/  # Общие типы
-├── package.json # Корневой package.json с turbo
-└── turbo.json   # Конфигурация Turbo
-```
-
----
-
-## ⚠️ Частые ошибки
-
-### ❌ НЕПРАВИЛЬНО:
 ```bash
-cd apps
-npm run dev  # Так НЕ работает!
+cd /path/to/nodir_hdd_fixer
+npm ci
+npm run build:api
+npm run build:web
 ```
 
-### ✅ ПРАВИЛЬНО:
+Only continue to runtime startup if both builds succeed.
+
+## Sanity checks
+
 ```bash
-cd /path/to/nodir_hdd_fixer  # КОРЕНЬ проекта!
-npm run dev  # Turbo запустит оба сервиса
+curl http://localhost:3004/v1/health
+ss -tlnp | grep -E '3003|3004'
+ps aux | grep -E 'node|next|nest'
 ```
 
----
+## What not to misdiagnose
 
-## 🔧 Если frontend не запускается
+- `GET /v1/users/me 401` for a logged-out user: expected behavior
+- React DevTools suggestion in browser console: irrelevant
+- `[HMR] connected`: normal
 
-1. **Проверь что apps/web существует:**
-   ```bash
-   ls -la apps/web/package.json
-   ```
+## If `npm run dev` fails on port 3004
 
-2. **Проверь что есть зависимости:**
-   ```bash
-   ls -la apps/web/node_modules
-   ```
+First rerun the root command once:
 
-3. **Установи зависимости:**
-   ```bash
-   cd /path/to/nodir_hdd_fixer
-   npm install
-   ```
+```bash
+cd /path/to/nodir_hdd_fixer
+npm run dev
+```
 
-4. **Проверь порты:**
-   ```bash
-   netstat -tlnp | grep -E "3003|3004"
-   ```
+The root preflight should clear stale repo-owned API listeners automatically.
 
----
+If it still fails, inspect the owner:
 
-## 📊 Как это работает
+```bash
+lsof -iTCP:3004 -sTCP:LISTEN -n -P
+```
 
-`npm run dev` в корне проекта использует **Turbo** который:
-1. Сканирует `apps/*` на наличие `package.json` со скриптом `dev`
-2. Запускает ВСЕ найденные приложения параллельно
-3. API: `apps/api/package.json` → `next dev --webpack -p 3004`
-4. Web: `apps/web/package.json` → `next dev --webpack -p 3003`
-
----
-
-## 🎯 Быстрая проверка
-
-После запуска открой в браузере:
-- **Frontend:** http://localhost:3003
-- **API Swagger:** http://localhost:3004/api/docs
-- **API Health:** http://localhost:3004/v1/health
-
----
-
-## 📞 Если что-то не так
-
-1. Посмотри логи:
-   ```bash
-   docker compose -f docker-compose.prod.yml logs -f
-   ```
-
-2. Проверь процессы:
-   ```bash
-   ps aux | grep -E "node|next|nest"
-   ```
-
-3. Перезапусти:
-   ```bash
-   # Если через Docker
-   docker compose -f docker-compose.prod.yml restart
-   
-   # Если через npm
-   # Ctrl+C и снова npm run dev
-   ```
+If the process is not from this repo, stop that external service or change `APP_PORT`.

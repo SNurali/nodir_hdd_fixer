@@ -290,6 +290,24 @@ export class AuthService {
         };
     }
 
+    getSessionMarkerCookieOptions() {
+        const webUrl = this.config.get('WEB_URL', 'http://localhost:3000');
+        const webUrlObj = new URL(webUrl);
+        const isProduction = this.config.get('NODE_ENV') === 'production';
+
+        const isLocalhost = webUrlObj.hostname === 'localhost' || webUrlObj.hostname === '127.0.0.1';
+        const setDomain = isProduction && !isLocalhost;
+
+        return {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax' as const,
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            domain: setDomain ? webUrlObj.hostname : undefined,
+        };
+    }
+
     /**
      * Validate or create user from Google OAuth data
      */

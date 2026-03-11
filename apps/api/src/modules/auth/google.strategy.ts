@@ -28,12 +28,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         const clientID = config.get<string>('GOOGLE_CLIENT_ID');
         const clientSecret = config.get<string>('GOOGLE_CLIENT_SECRET');
         const callbackURL = config.get<string>('GOOGLE_CALLBACK_URL', '/auth/google/callback');
-        const apiUrl = config.get<string>('APP_URL', 'http://localhost:3004');
+        const baseUrl = config.get<string>('API_BASE_URL') || config.get<string>('APP_URL', 'http://localhost:3004');
+        // Remove /v1 suffix if present for OAuth callback
+        const cleanBaseUrl = baseUrl.replace(/\/v1\/?$/, '');
 
         super({
             clientID,
             clientSecret,
-            callbackURL: `${apiUrl}${callbackURL}`,
+            callbackURL: `${cleanBaseUrl}${callbackURL}`,
             scope: ['email', 'profile'],
             passReqToCallback: false,
         });

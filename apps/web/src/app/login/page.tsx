@@ -27,7 +27,7 @@ import api from '@/lib/api';
 import { Logo } from '@/components/logo';
 import { CyberBackgroundSimple } from '@/components/cyber-background';
 import { GoogleSignInButton, AuthDivider } from '@/components/google-sign-in-button';
-import { getPublicApiUrl } from '@/lib/api-url';
+import { getApiBaseUrl } from '@/lib/api-url';
 
 type AuthMode = 'login' | 'forgot' | 'reset';
 type LoginType = 'phone' | 'email';
@@ -96,8 +96,8 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = () => {
     // Redirect to Google OAuth endpoint
-    const apiUrl = getPublicApiUrl();
-    window.location.href = `${apiUrl}/auth/google`;
+    const apiBaseUrl = getApiBaseUrl();
+    window.location.href = `${apiBaseUrl}/auth/google`;
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {

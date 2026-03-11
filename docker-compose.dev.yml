@@ -38,6 +38,33 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: hdd_fixer_api_dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - '3004:3004'
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/packages/shared/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NODE_ENV=development
+
 volumes:
   pgdata_dev:
   redisdata_dev:
