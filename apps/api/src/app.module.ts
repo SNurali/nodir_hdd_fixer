@@ -59,7 +59,7 @@ import { AppController } from './app.controller';
         }),
 
         // Feature Modules
-        AuthModule,
+        AuthModule.register(),
         UsersModule,
         RolesModule,
         ClientsModule,

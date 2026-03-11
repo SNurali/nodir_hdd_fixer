@@ -16,7 +16,6 @@ import {
 } from '@hdd-fixer/shared';
 import { ThrottleAuth } from '../../common/throttler/throttler.decorator';
 import { ConfigService } from '@nestjs/config';
-import { GoogleStrategy } from './google.strategy';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -96,7 +95,13 @@ export class AuthController {
     @Get('google/config')
     @ApiOperation({ summary: 'Check if Google OAuth is configured' })
     async googleConfig() {
-        return { enabled: GoogleStrategy.isEnabled };
+        const isGoogleConfigured = !!(
+            process.env.GOOGLE_CLIENT_ID && 
+            process.env.GOOGLE_CLIENT_SECRET &&
+            process.env.GOOGLE_CLIENT_ID !== '' && 
+            process.env.GOOGLE_CLIENT_SECRET !== ''
+        );
+        return { enabled: isGoogleConfigured };
     }
 
     @Get('google')

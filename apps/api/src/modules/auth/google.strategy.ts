@@ -20,7 +20,6 @@ export interface GoogleProfile {
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private readonly logger = createLogger('GoogleStrategy');
-    public static isEnabled: boolean = false;
 
     constructor(
         @Inject(ConfigService) private readonly config: ConfigService,
@@ -31,23 +30,15 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         const callbackURL = config.get<string>('GOOGLE_CALLBACK_URL', '/auth/google/callback');
         const apiUrl = config.get<string>('APP_URL', 'http://localhost:3004');
 
-        // Проверяем, настроен ли Google OAuth
-        const isConfigured = !!(clientID && clientSecret && clientID !== '' && clientSecret !== '');
-        GoogleStrategy.isEnabled = isConfigured;
-
         super({
-            clientID: clientID || 'dummy',
-            clientSecret: clientSecret || 'dummy',
+            clientID,
+            clientSecret,
             callbackURL: `${apiUrl}${callbackURL}`,
             scope: ['email', 'profile'],
             passReqToCallback: false,
         });
 
-        if (isConfigured) {
-            this.logger.log('GoogleStrategy initialized');
-        } else {
-            this.logger.warn('Google OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable.');
-        }
+        this.logger.log('GoogleStrategy initialized successfully');
     }
 
     async validate(
