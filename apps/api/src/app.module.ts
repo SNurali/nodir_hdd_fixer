@@ -25,7 +25,7 @@ import { AppController } from './app.controller';
         // Configuration
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: ['.env.local', '.env', '../../.env.local', '../../.env'],
+            envFilePath: ['.env.production', '.env.local', '.env', '../../.env.production', '../../.env.local', '../../.env'],
         }),
 
         // Rate Limiting

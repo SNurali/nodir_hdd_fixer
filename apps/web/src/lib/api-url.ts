@@ -11,6 +11,11 @@ function resolveRuntimeUrl(rawUrl: string): string {
     return fallback;
   }
 
+  // If relative URL (starts with /), use current origin
+  if (fallback.startsWith('/')) {
+    return trimTrailingSlash(new URL(fallback, window.location.origin).toString());
+  }
+
   try {
     const parsedUrl = new URL(fallback, window.location.origin);
     const browserHost = window.location.hostname;
@@ -22,6 +27,11 @@ function resolveRuntimeUrl(rawUrl: string): string {
       parsedUrl.hostname = browserHost;
     }
 
+    // Always use port 80 (no explicit port) for production domains
+    if (!browserIsLocal && !apiHostIsLocal) {
+      parsedUrl.port = '';
+    }
+
     return trimTrailingSlash(parsedUrl.toString());
   } catch {
     return fallback;
@@ -30,7 +40,8 @@ function resolveRuntimeUrl(rawUrl: string): string {
 
 export function getApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  const base = envUrl || 'http://localhost:3004/v1';
+  // Use relative URL by default for production (supports multiple domains)
+  const base = envUrl || '/v1';
   return resolveRuntimeUrl(base);
 }
 

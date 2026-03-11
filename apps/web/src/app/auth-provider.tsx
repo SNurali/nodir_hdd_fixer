@@ -107,6 +107,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             };
         }
 
+        const tryRefreshToken = async (): Promise<boolean> => {
+            try {
+                const apiBaseUrl = getApiBaseUrl();
+                const response = await fetch(`${apiBaseUrl}/auth/refresh`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    // Store new tokens from response cookies (already set by server)
+                    // Also update user in localStorage if we have fresh data
+                    if (result?.user) {
+                        const refreshedUser = normalizeUser(result.user);
+                        if (refreshedUser) {
+                            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshedUser));
+                        }
+                    }
+                    return true;
+                }
+                return false;
+            } catch {
+                return false;
+            }
+        };
+
         const syncAuthFromServer = async () => {
             try {
                 const apiBaseUrl = getApiBaseUrl();
@@ -120,7 +149,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 });
 
                 if (!response.ok) {
-                    throw new Error(response.status === 401 || response.status === 403 ? 'UNAUTHORIZED' : 'REQUEST_FAILED');
+                    if (response.status === 401 || response.status === 403) {
+                        // Try to refresh token before giving up
+                        const refreshed = await tryRefreshToken();
+                        
+                        if (refreshed) {
+                            // Retry fetching user profile after refresh
+                            const retryResponse = await fetch(`${apiBaseUrl}/users/me`, {
+                                method: 'GET',
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                cache: 'no-store',
+                            });
+
+                            if (retryResponse.ok) {
+                                const payload = await retryResponse.json();
+                                const source = payload?.data || payload;
+                                const syncedUser = normalizeUser(source);
+
+                                if (!isMounted) return;
+                                setUser(syncedUser);
+                                if (syncedUser) {
+                                    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(syncedUser));
+                                }
+                                return;
+                            }
+                        }
+
+                        // If refresh failed, clear auth state
+                        clearClientAuthState();
+                        return;
+                    }
+                    throw new Error('REQUEST_FAILED');
                 }
 
                 const payload = await response.json();
@@ -136,13 +198,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
             } catch (error) {
                 if (!isMounted) return;
-
-                if (
-                    error instanceof Error &&
-                    error.message === 'UNAUTHORIZED'
-                ) {
-                    clearClientAuthState();
-                }
+                // On network errors, keep the user logged in (optimistic approach)
+                // They will be logged out only when they try to perform an action
+                console.warn('Auth sync failed, keeping cached user:', error);
             } finally {
                 if (isMounted) {
                     setIsLoading(false);

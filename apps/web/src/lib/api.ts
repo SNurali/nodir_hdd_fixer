@@ -30,6 +30,13 @@ const api = axios.create({
   withCredentials: true,
 });
 
+let isPageLoaded = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    isPageLoaded = true;
+  });
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -37,11 +44,15 @@ api.interceptors.response.use(
     const requestUrl = config?.url as string | undefined;
 
     if (status === 401 && typeof window !== 'undefined' && !isAuthRequest(requestUrl)) {
-      localStorage.removeItem('auth_user');
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      // Only redirect if the page is fully loaded and user is actively interacting
+      // This prevents immediate logout during initial page load auth sync
+      if (isPageLoaded) {
+        localStorage.removeItem('auth_user');
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        toast.error('Сеанс истек. Войдите заново');
       }
-      toast.error('Сеанс истек. Войдите заново');
     }
 
     if (status === 400) {

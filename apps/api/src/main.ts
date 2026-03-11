@@ -48,20 +48,35 @@ async function bootstrap() {
     }));
     app.use(compression());
 
-    // CORS
-    const webUrl = configService.get('WEB_URL', 'http://localhost:3003');
+    // CORS - разрешаем все домены
+    const corsOrigins = [
+        'http://arendator.uz:3003',
+        'http://hddfix.uz:3003',
+        'http://localhost:3003',
+        'http://127.0.0.1:3003',
+        'http://arendator.uz',
+        'http://hddfix.uz',
+        'https://arendator.uz',
+        'https://hddfix.uz',
+        /https?:\/\/(?:\d{1,3}\.){3}\d{1,3}:3003/,  // Любые IP на порту 3003
+        true, // Разрешить все origin (для отладки)
+    ];
+
     app.enableCors({
-        origin: [
-            webUrl,
-            'http://localhost:3003',
-            'http://127.0.0.1:3003',
-            'http://172.16.252.32:3003',
-            'http://195.158.24.137:3003',
-            /https?:\/\/(?:\d{1,3}\.){3}\d{1,3}:3003/,  // Любые IP на порту 3003
-        ],
+        origin: function (origin, callback) {
+            // Разрешаем запросы без origin (mobile apps, curl)
+            if (!origin) return callback(null, true);
+            
+            const allowed = corsOrigins.some(o => {
+                if (o === true) return true;
+                if (o instanceof RegExp) return o.test(origin);
+                return o === origin;
+            });
+            callback(null, allowed);
+        },
         credentials: true,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-        allowedHeaders: 'Content-Type,Accept,Authorization',
+        allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With',
         exposedHeaders: 'Set-Cookie',
     });
 
@@ -96,7 +111,7 @@ async function bootstrap() {
     const port = configService.get('APP_PORT', 3004);
     await app.listen(port, '0.0.0.0');
     logger.log(`API running on http://0.0.0.0:${port}`);
-    logger.log(`Allowed CORS origin: ${webUrl}`);
+    logger.log(`CORS enabled for: arendator.uz:3003, hddfix.uz:3003, localhost:3003`);
     logger.log(`Uploads dir: ${uploadsDir}`);
     logger.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }

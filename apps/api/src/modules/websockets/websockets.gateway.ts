@@ -13,7 +13,13 @@ import { OrdersService } from '../orders/orders.service';
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3003'],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3003',
+      'http://hddfix.uz:3003',
+      'http://172.16.252.32:3003',
+      'http://195.158.24.137:3003',
+    ],
     credentials: true,
   },
 })
