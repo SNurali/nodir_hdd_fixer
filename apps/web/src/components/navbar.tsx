@@ -5,6 +5,7 @@ import { useAuth } from '@/app/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/i18n/provider';
 import { getPublicApiUrl } from '@/lib/api-url';
+import { Logo } from '@/components/logo';
 import {
   Sun,
   Moon,
@@ -17,7 +18,8 @@ import {
   Settings,
   Wrench,
   Users,
-  HardDrive
+  HardDrive,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -101,20 +103,28 @@ export default function Navbar({ onThemeChange, currentTheme }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Wrench className="text-white" size={24} />
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
+            <div className="relative">
+              <Logo size={44} animated={true} />
+              {/* Glow effect behind logo */}
+              <div className={`absolute inset-0 blur-xl opacity-50 ${currentTheme === 'dark' ? 'bg-sky-500/30' : 'bg-sky-400/20'} rounded-full -z-10`} />
             </div>
             <div className="flex flex-col">
-              <span className={`text-lg font-bold ${currentTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('login.service_title')}
+              <span className={`text-xl font-bold tracking-tight ${currentTheme === 'dark' 
+                ? 'bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent' 
+                : 'bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent'
+              }`}>
+                HDD FIXER
               </span>
               <div className="flex items-center gap-2">
-                <span className={`text-xs ${currentTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} hidden sm:inline-block`} style={{ letterSpacing: '0.5px' }}>
+                <span className={`text-[10px] uppercase tracking-wider font-medium ${currentTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                   {t('login.tagline')}
                 </span>
-                <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-sm">
-                  <HardDrive size={10} />
+                <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${currentTheme === 'dark' 
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                  : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                }`}>
+                  <Sparkles size={10} />
                   {t('navbar.data_recovery_badge')}
                 </span>
               </div>
