@@ -1,8 +1,8 @@
 version: '3.8'
 
 # Docker Compose для локальной разработки
-# Порты приведены к стандартным (5432, 6379) для удобства разработки
-# Боевой сервер использует docker-compose.prod.yml с портами 5436 и 6380
+# Порты 5436/6380 - как на боевом сервере
+# (5432/6379 могут быть заняты другими проектами)
 
 services:
   postgres:
@@ -14,7 +14,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-hdd_fixer_secret}
       POSTGRES_DB: ${DB_DATABASE:-hdd_fixer_db}
     ports:
-      - '5432:5432'
+      - '5436:5432'
     volumes:
       - pgdata_dev:/var/lib/postgresql/data
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
@@ -29,7 +29,7 @@ services:
     container_name: hdd_fixer_redis_dev
     restart: unless-stopped
     ports:
-      - '6379:6379'
+      - '6380:6379'
     volumes:
       - redisdata_dev:/data
     healthcheck:
