@@ -26,6 +26,10 @@ export class UserEntity {
     @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
     phone: string | null;
 
+    @Index('idx_users_google_id')
+    @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+    google_id: string | null;
+
     @Column({ type: 'varchar', length: 100, nullable: true })
     telegram: string | null;
 

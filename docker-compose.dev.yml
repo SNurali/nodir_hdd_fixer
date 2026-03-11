@@ -1,22 +1,23 @@
 version: '3.8'
 
-# Docker Compose для продакшена и локальной разработки с боевыми портами
-# PostgreSQL 16 + Redis 7
-# Порты: 5436 (DB), 6380 (Redis) - как на боевом сервере
+# Docker Compose для локальной разработки
+# Порты приведены к стандартным (5432, 6379) для удобства разработки
+# Боевой сервер использует docker-compose.prod.yml с портами 5436 и 6380
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: hdd_fixer_postgres
+    container_name: hdd_fixer_postgres_dev
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USERNAME:-hdd_fixer}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-hdd_fixer_secret}
       POSTGRES_DB: ${DB_DATABASE:-hdd_fixer_db}
     ports:
-      - '5436:5432'
+      - '5432:5432'
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_dev:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-hdd_fixer} -d ${DB_DATABASE:-hdd_fixer_db}']
       interval: 5s
@@ -25,12 +26,12 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: hdd_fixer_redis
+    container_name: hdd_fixer_redis_dev
     restart: unless-stopped
     ports:
-      - '6380:6379'
+      - '6379:6379'
     volumes:
-      - redisdata:/data
+      - redisdata_dev:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -38,5 +39,5 @@ services:
       retries: 5
 
 volumes:
-  pgdata:
-  redisdata:
+  pgdata_dev:
+  redisdata_dev:

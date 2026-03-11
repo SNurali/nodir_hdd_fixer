@@ -1,6 +1,7 @@
-import { Controller, Post, Body, UsePipes, Res } from '@nestjs/common';
+import { Controller, Post, Body, UsePipes, Res, Get, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Response, Request } from 'express';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import {
@@ -14,11 +15,16 @@ import {
     TResetPasswordDto,
 } from '@hdd-fixer/shared';
 import { ThrottleAuth } from '../../common/throttler/throttler.decorator';
+import { ConfigService } from '@nestjs/config';
+import { GoogleStrategy } from './google.strategy';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly _authService: AuthService) { }
+    constructor(
+        private readonly _authService: AuthService,
+        private readonly _config: ConfigService,
+    ) { }
 
     @Post('register')
     @ApiOperation({ summary: 'Register a new client' })
@@ -83,5 +89,48 @@ export class AuthController {
     @UsePipes(new ZodValidationPipe(ResetPasswordDto))
     async resetPassword(@Body() dto: TResetPasswordDto) {
         return this._authService.resetPassword(dto.token, dto.new_password);
+    }
+
+    // ==================== GOOGLE OAUTH ====================
+
+    @Get('google/config')
+    @ApiOperation({ summary: 'Check if Google OAuth is configured' })
+    async googleConfig() {
+        return { enabled: GoogleStrategy.isEnabled };
+    }
+
+    @Get('google')
+    @ApiOperation({ summary: 'Initiate Google OAuth login' })
+    @UseGuards(AuthGuard('google'))
+    async googleAuth() {
+        // Guard redirects to Google
+    }
+
+    @Get('google/callback')
+    @ApiOperation({ summary: 'Google OAuth callback' })
+    @UseGuards(AuthGuard('google'))
+    async googleAuthCallback(
+        @Req() req: Request,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        const result = req.user as {
+            access_token: string;
+            refresh_token: string;
+            user: {
+                id: string;
+                full_name: string;
+                role: string;
+                avatar_url: string | null;
+                email: string | null;
+            };
+        };
+
+        // Set httpOnly cookies
+        res.cookie('refresh_token', result.refresh_token, this._authService.getCookieOptions());
+        res.cookie('access_token', result.access_token, this._authService.getAccessTokenCookieOptions());
+
+        // Redirect to frontend with success
+        const webUrl = this._config.get<string>('WEB_URL', 'http://localhost:3003');
+        res.redirect(`${webUrl}/login?oauth=success`);
     }
 }

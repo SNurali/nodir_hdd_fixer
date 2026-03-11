@@ -1,103 +1,413 @@
-# Deployment Guide for Repair Service Management System
+# Deployment Guide / Руководство по деплою
 
-This guide outlines the steps needed to deploy the NestJS API and Next.js Web applications to a production server using Docker Compose.
+HDD Fixer — Service Center Management System
 
-## Prerequisites
+---
 
-Ensure the target server has the following installed:
-- [Docker](https://docs.docker.com/engine/install/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- Git (or another way to copy files to the server)
+## 📋 Содержание
 
-## 1. Clone the Repository
+1. [Требования](#требования)
+2. [Локальная разработка](#локальная-разработка)
+3. [Деплой на продакшен](#деплой-на-продакшен)
+4. [Настройка сервера](#настройка-сервера)
+5. [Мониторинг и логи](#мониторинг-и-логи)
+6. [Troubleshooting](#troubleshooting)
 
-First, obtain the source code on your production server:
+---
+
+## Требования
+
+### Минимальные требования
+- **OS**: Linux (Ubuntu 20.04+, Debian 11+)
+- **CPU**: 2 cores
+- **RAM**: 4 GB
+- **Disk**: 20 GB free space
+- **Node.js**: 20.x
+- **Docker**: 24.x+
+- **Docker Compose**: 2.x+
+
+### Проверка установленных компонентов
+```bash
+node --version          # v20.x.x
+npm --version           # 10.x.x
+docker --version        # Docker version 24.x.x
+docker compose version  # Docker Compose version 2.x.x
+```
+
+---
+
+## Локальная разработка
+
+### Быстрый старт (3 команды)
 
 ```bash
-git clone <your-repo-url> nodir_hdd_fixer
+# 1. Клонировать репозиторий
+git clone https://github.com/SNurali/nodir_hdd_fixer.git
 cd nodir_hdd_fixer
+
+# 2. Установить зависимости
+npm install
+
+# 3. Запустить всё
+npm run dev:all
 ```
 
-## 2. Set Up Environment Variables
+### Сервисы локально
 
-Create a production `.env.prod` file in the root directory:
+| Сервис | URL | Порт |
+|--------|-----|------|
+| Frontend Web | http://localhost:3003 | 3003 |
+| Backend API | http://localhost:3004 | 3004 |
+| Swagger Docs | http://localhost:3004/api/docs | 3004 |
+| PostgreSQL | localhost | 5432 |
+| Redis | localhost | 6379 |
 
+### Остановка локальной среды
 ```bash
-cp .env.example .env.prod
+# Остановить всё (Ctrl+C в терминале)
+# Остановить Docker контейнеры
+npm run docker:dev:down
 ```
 
-Edit `.env.prod` to ensure it contains secure, production-ready values. **Crucially**, make sure:
-- `DB_HOST=postgres`
-- `REDIS_HOST=redis`
-- `NODE_ENV=production`
-- `NEXT_PUBLIC_API_URL=https://api.yourdomain.com/v1` (If using a domain, set this to your API's public URL)
-- JWT Secrets and secure passwords should be safely generated and assigned.
-- Change `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` to match. 
+---
 
-The `docker-compose.prod.yml` file is configured to pick up both inline configuration defaults and values from `.env.prod`.
+## Деплой на продакшен
 
-## 3. Build and Start the Application
-
-You can spin up the entire application stack using Docker Compose. Since our stack relies on multi-stage `Dockerfile` configurations in root contexts, `docker-compose.prod.yml` takes care of this.
+### Вариант 1: Автоматический деплой (рекомендуется)
 
 ```bash
-# Build the Docker images and start in detached mode
-docker compose -f docker-compose.prod.yml up -d --build
+# 1. Обновить код
+git pull
+
+# 2. Собрать проект
+npm run build
+
+# 3. Запустить деплой (миграции + перезапуск сервисов)
+npm run start:prod
 ```
 
-**What this does:**
-1. Starts the `postgres` and `redis` services.
-2. Waits for databases to become healthy.
-3. Builds and starts the NestJS `api` service (exposed on port `3004`).
-4. Builds and starts the Next.js `web` service (exposed on port `3003`).
+### Вариант 2: Ручной деплой
 
-You can check logs for standard output:
 ```bash
+# 1. Обновить код
+git pull origin main
+
+# 2. Установить зависимости
+npm install --production
+
+# 3. Собрать проект
+npm run build
+
+# 4. Применить миграции БД
+npm run db:migrate
+
+# 5. Запустить Docker контейнеры (продакшен порты)
+docker compose -f docker-compose.prod.yml up -d
+
+# 6. Проверить логи
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
-## 4. Run Database Migrations and Seed Database
-
-Since the NestJS backend handles database migrations, you can execute them directly within the running `api` container.
+### Вариант 3: Скрипт deploy.sh
 
 ```bash
-docker exec -it hdd_fixer_api_prod sh -c "cd apps/api && npm run migration:run"
+# Запустить скрипт деплоя
+./scripts/deploy.sh
+
+# Или через npm
+npm run deploy
 ```
 
-If you have a database seed script, you can run it via:
+---
+
+## Настройка сервера
+
+### 1. Установка Node.js 20.x
+
 ```bash
-docker exec -it hdd_fixer_api_prod sh -c "cd apps/api && npm run seed"
+# Ubuntu/Debian
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Проверка
+node --version  # v20.x.x
+npm --version   # 10.x.x
 ```
 
-## 5. Setting Up a Reverse Proxy (Optional, Recommend for Production)
+### 2. Установка Docker
 
-For true production deployments using a domain, it's highly recommended to place Nginx or Caddy in front of your Web and API services to handle SSL (HTTPS) and route traffic smoothly.
+```bash
+# Ubuntu/Debian
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
 
-### Nginx Example
-Install `nginx` and `certbot` for Let's Encrypt SSL certificates.
-Create your server blocks pointing to:
-- `app.yourdomain.com` -> `http://localhost:3003`
-- `api.yourdomain.com` -> `http://localhost:3004`
-
-```nginx
-server {
-    listen 80;
-    server_name app.yourdomain.com;
-
-    location / {
-        proxy_pass http://localhost:3003;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
+# Проверка
+docker --version
+docker compose version
 ```
 
-Once running and exposed naturally natively, you have completed the deployment process!
+### 3. Настройка окружения
+
+```bash
+# Перейти в директорию проекта
+cd /path/to/nodir_hdd_fixer
+
+# Создать production .env файл
+cp .env.production.example .env.production
+
+# Отредактировать с реальными значениями
+nano .env.production
+```
+
+### 4. Настройка .env.production
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5436
+DB_USERNAME=hdd_fixer
+DB_PASSWORD=SECURE_PASSWORD_HERE
+DB_DATABASE=hdd_fixer_db
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6380
+
+# JWT (обязательно смените!)
+JWT_SECRET=generate_32_random_characters_here
+JWT_REFRESH_SECRET=generate_another_32_random_chars
+
+# API
+APP_PORT=3004
+APP_URL=http://your-server-ip:3004
+CORS_ORIGINS=http://localhost:3003,https://your-domain.com
+
+# Web
+WEB_PORT=3003
+NEXT_PUBLIC_API_URL=https://your-domain.com/v1
+
+# Environment
+NODE_ENV=production
+```
+
+### 5. Генерация безопасных секретов
+
+```bash
+# Сгенерировать случайную строку
+openssl rand -base64 32
+# или
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+---
+
+## Мониторинг и логи
+
+### Docker Compose логи
+
+```bash
+# Все логи
+docker compose -f docker-compose.prod.yml logs -f
+
+# Только API
+docker compose -f docker-compose.prod.yml logs -f api
+
+# Только PostgreSQL
+docker compose -f docker-compose.prod.yml logs -f postgres
+
+# Только Redis
+docker compose -f docker-compose.prod.yml logs -f redis
+```
+
+### Проверка здоровья сервисов
+
+```bash
+# API health check
+curl http://localhost:3004/v1/health
+
+# Web check
+curl http://localhost:3003
+
+# PostgreSQL check
+docker exec hdd_fixer_postgres_prod pg_isready -U hdd_fixer -d hdd_fixer_db
+
+# Redis check
+docker exec hdd_fixer_redis_prod redis-cli ping
+```
+
+### Статус контейнеров
+
+```bash
+# Все контейнеры
+docker compose -f docker-compose.prod.yml ps
+
+# Детальная информация
+docker stats
+```
+
+---
 
 ## Troubleshooting
-- **API 502 Bad Request**: Check if API started properly (`docker compose -f docker-compose.prod.yml logs api`).
-- **Database Connection Error**: Verify `DB_HOST=postgres` in `.env.prod`.
-- **CORS Errors**: Ensure that the `CORS_ORIGINS` in your NestJS API `.env.prod` allows the public custom URL of your frontend.
+
+### API не запускается (порт 3004)
+
+```bash
+# Проверить кто использует порт
+lsof -i :3004
+
+# Остановить старый процесс
+kill -9 <PID>
+
+# Или через fuser
+fuser -k 3004/tcp
+
+# Запустить снова
+npm run start:api
+```
+
+### Ошибка подключения к БД
+
+```bash
+# Проверить запущен ли PostgreSQL
+docker compose -f docker-compose.prod.yml ps postgres
+
+# Проверить логи PostgreSQL
+docker compose -f docker-compose.prod.yml logs postgres
+
+# Проверить переменные окружения
+cat .env.production | grep DB_
+
+# Перезапустить PostgreSQL
+docker compose -f docker-compose.prod.yml restart postgres
+```
+
+### Миграции не применяются
+
+```bash
+# Проверить подключение к БД
+docker exec -it hdd_fixer_postgres_prod psql -U hdd_fixer -d hdd_fixer_db
+
+# Применить миграции вручную из контейнера
+docker exec -it hdd_fixer_api_prod sh -c "cd apps/api && npm run migration:run"
+
+# Или локально (если БД доступна)
+npm run db:migrate
+```
+
+### Redis не отвечает
+
+```bash
+# Проверить статус
+docker compose -f docker-compose.prod.yml ps redis
+
+# Проверить логи
+docker compose -f docker-compose.prod.yml logs redis
+
+# Перезапустить
+docker compose -f docker-compose.prod.yml restart redis
+
+# Проверить подключение
+docker exec hdd_fixer_redis_prod redis-cli ping
+```
+
+### Очистка и полный перезапуск
+
+```bash
+# Остановить всё
+docker compose -f docker-compose.prod.yml down
+
+# Удалить volumes (осторожно: данные будут удалены!)
+docker compose -f docker-compose.prod.yml down -v
+
+# Запустить заново
+docker compose -f docker-compose.prod.yml up -d
+
+# Применить миграции
+npm run db:migrate
+
+# Засидить БД
+npm run db:seed
+```
+
+### Проблемы с CORS
+
+Если frontend не может подключиться к API:
+
+1. Проверьте `CORS_ORIGINS` в `.env.production`
+2. Убедитесь что URL frontend указан правильно
+3. Перезапустите API после изменений
+
+```env
+# Правильно для продакшена
+CORS_ORIGINS=http://localhost:3003,https://hdd-fixer.uz,https://www.hdd-fixer.uz
+```
+
+---
+
+## Backup и восстановление БД
+
+### Создание бэкапа
+
+```bash
+# Бэкап PostgreSQL
+docker exec hdd_fixer_postgres_prod pg_dump -U hdd_fixer hdd_fixer_db > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Бэкап Redis
+docker exec hdd_fixer_redis_prod redis-cli BGSAVE
+cp /path/to/redisdata/dump.rdb redis_backup_$(date +%Y%m%d_%H%M%S).rdb
+```
+
+### Восстановление из бэкапа
+
+```bash
+# Восстановление PostgreSQL
+cat backup_20240101_120000.sql | docker exec -i hdd_fixer_postgres_prod psql -U hdd_fixer -d hdd_fixer_db
+```
+
+---
+
+## Обновление (Update)
+
+```bash
+# 1. Остановить текущую версию
+docker compose -f docker-compose.prod.yml down
+
+# 2. Обновить код
+git pull origin main
+
+# 3. Установить зависимости
+npm install --production
+
+# 4. Собрать
+npm run build
+
+# 5. Применить миграции
+npm run db:migrate
+
+# 6. Запустить новую версию
+docker compose -f docker-compose.prod.yml up -d
+
+# 7. Проверить логи
+docker compose -f docker-compose.prod.yml logs -f
+```
+
+---
+
+## Security Checklist
+
+- [ ] Смените все JWT секреты на уникальные значения
+- [ ] Смените пароль PostgreSQL на сложный
+- [ ] Настройте firewall (UFW/iptables)
+- [ ] Настройте HTTPS (Let's Encrypt)
+- [ ] Отключите root login по SSH
+- [ ] Настройте автоматические обновления безопасности
+- [ ] Регулярно делайте бэкапы БД
+- [ ] Мониторьте логи на предмет атак
+
+---
+
+## Контакты и поддержка
+
+- GitHub: https://github.com/SNurali/nodir_hdd_fixer
+- Документация: /docs

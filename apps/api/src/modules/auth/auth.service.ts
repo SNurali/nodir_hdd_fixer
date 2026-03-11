@@ -10,6 +10,13 @@ import { TLoginDto, TRegisterDto } from '@hdd-fixer/shared';
 import { createLogger } from '../../common/logger/pino.logger';
 import { NotificationsService } from '../notifications/notifications.service';
 
+export interface GoogleUserData {
+    googleId: string;
+    email?: string;
+    fullName: string;
+    avatarUrl?: string;
+}
+
 @Injectable()
 export class AuthService {
     private readonly logger = createLogger('AuthService');
@@ -280,6 +287,96 @@ export class AuthService {
             path: '/',
             maxAge: 15 * 60 * 1000, // 15 minutes
             domain: setDomain ? webUrlObj.hostname : undefined,
+        };
+    }
+
+    /**
+     * Validate or create user from Google OAuth data
+     */
+    async validateGoogleUser(data: GoogleUserData) {
+        this.logger.log('Validating Google user', { googleId: data.googleId, email: data.email });
+
+        // Try to find user by google_id
+        let user = await this.userRepo.findOne({
+            where: { google_id: data.googleId },
+            relations: ['role'],
+        });
+
+        // If not found by google_id, try to find by email and link accounts
+        if (!user && data.email) {
+            user = await this.userRepo.findOne({
+                where: { email: data.email },
+                relations: ['role'],
+            });
+
+            if (user) {
+                // Link Google account to existing user
+                user.google_id = data.googleId;
+                if (data.avatarUrl && !user.avatar_url) {
+                    user.avatar_url = data.avatarUrl;
+                }
+                await this.userRepo.save(user);
+                this.logger.log('Linked Google account to existing user', { userId: user.id });
+            }
+        }
+
+        // If still no user, create new one
+        if (!user) {
+            const clientRole = await this.roleRepo.findOne({
+                where: { name_eng: 'client' },
+            });
+
+            if (!clientRole) {
+                this.logger.error('Client role missing during Google OAuth registration');
+                throw new Error('Client role not found');
+            }
+
+            // Check if email is already used by another user
+            if (data.email) {
+                const existingUser = await this.userRepo.findOne({
+                    where: { email: data.email },
+                });
+                if (existingUser) {
+                    throw new ConflictException('Email already registered with different account');
+                }
+            }
+
+            user = this.userRepo.create({
+                full_name: data.fullName,
+                email: data.email || null,
+                google_id: data.googleId,
+                avatar_url: data.avatarUrl || null,
+                role_id: clientRole.id,
+                preferred_language: 'ru',
+                // No password for OAuth users
+                password_hash: null,
+            });
+
+            await this.userRepo.save(user);
+            this.logger.log('Created new user from Google OAuth', { userId: user.id });
+
+            // Create client record
+            const client = this.clientRepo.create({
+                user_id: user.id,
+                full_name: data.fullName,
+                email: data.email || null,
+                preferred_language: 'ru',
+            });
+            await this.clientRepo.save(client);
+        }
+
+        const roleName = user.role.name_eng.toLowerCase();
+        const tokens = this.generateTokens(user.id, user.role_id, roleName);
+
+        return {
+            ...tokens,
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                role: roleName,
+                avatar_url: user.avatar_url,
+                email: user.email,
+            },
         };
     }
 }

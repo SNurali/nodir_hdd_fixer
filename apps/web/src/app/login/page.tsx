@@ -26,6 +26,8 @@ import {
 import api from '@/lib/api';
 import { Logo } from '@/components/logo';
 import { CyberBackgroundSimple } from '@/components/cyber-background';
+import { GoogleSignInButton, AuthDivider } from '@/components/google-sign-in-button';
+import { getPublicApiUrl } from '@/lib/api-url';
 
 type AuthMode = 'login' | 'forgot' | 'reset';
 type LoginType = 'phone' | 'email';
@@ -54,7 +56,21 @@ export default function LoginPage() {
   useEffect(() => {
     const mountTimer = setTimeout(() => setMounted(true), 0);
 
-    const tokenFromUrl = new URLSearchParams(window.location.search).get('reset_token');
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('reset_token');
+    const oauthSuccess = urlParams.get('oauth');
+
+    // Handle OAuth success redirect
+    if (oauthSuccess === 'success') {
+      setInfo('Авторизация через Google успешна! Загрузка...');
+      // Clear the query param and refresh auth state
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // The cookies are already set by the backend, so we just need to refresh the page
+      // to trigger the auth provider to pick up the new session
+      window.location.reload();
+      return () => clearTimeout(mountTimer);
+    }
+
     if (tokenFromUrl) {
       setMode('reset');
       setResetToken(tokenFromUrl);
@@ -76,6 +92,12 @@ export default function LoginPage() {
     } else {
       setPhone('+998' + digits.slice(0, 9));
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    // Redirect to Google OAuth endpoint
+    const apiUrl = getPublicApiUrl();
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -253,7 +275,18 @@ export default function LoginPage() {
 
             {/* Login Form */}
             {mode === 'login' && (
-              <form onSubmit={handleLoginSubmit} className="space-y-5">
+              <>
+                {/* Google Sign In */}
+                <GoogleSignInButton
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  theme={isDark ? "dark" : "light"}
+                  hideIfNotConfigured={true}
+                />
+
+                <AuthDivider text="или" theme={isDark ? "dark" : "light"} />
+
+                <form onSubmit={handleLoginSubmit} className="space-y-5">
                 {/* Login Type Toggle */}
                 <div className={`flex rounded-xl p-1 ${
                   isDark ? 'bg-slate-800' : 'bg-slate-100'
@@ -416,6 +449,7 @@ export default function LoginPage() {
                   )}
                 </button>
               </form>
+            </>
             )}
 
             {/* Forgot Password Form */}
