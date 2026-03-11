@@ -16,6 +16,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { E164_PHONE_REGEX } from '@/lib/phone';
 import { DEFAULT_EQUIPMENTS, DEFAULT_ISSUES } from '@/features/orders/new/constants';
 import {
   buildOrderPayload,
@@ -80,7 +81,7 @@ export default function NewOrderPage() {
      equipment_id: '',
      issue_id: '',
      description: '',
-     phone: '+998',
+     phone: '',
      full_name: '',
      telegram: '',
      preferred_language: 'ru'
@@ -237,13 +238,12 @@ export default function NewOrderPage() {
   };
 
   const validatePhone = (phone: string): boolean => {
-    const phoneRegex = /^\+998\d{9}$/;
     if (!phone) {
       setPhoneError('Номер телефона обязателен');
       return false;
     }
-    if (!phoneRegex.test(phone)) {
-      setPhoneError('Неверный формат. Используйте: +998901234567');
+    if (!E164_PHONE_REGEX.test(phone)) {
+      setPhoneError('Неверный формат. Используйте международный номер с кодом страны');
       return false;
     }
     setPhoneError('');
@@ -284,10 +284,9 @@ export default function NewOrderPage() {
 
     // Phone validation and normalization (only required for non-client users submitting guest order)
     const phone = normalizePhone(formData.phone || '');
-    const PHONE_REGEX = /^\+998\d{9}$/;
     // Client role: backend auto-resolves from JWT. Others (admin/operator/guest) need phone for guest client creation
-    if (!isClientRole && !PHONE_REGEX.test(phone)) {
-      toast.error('Введите телефон в формате +998901234567');
+    if (!isClientRole && !E164_PHONE_REGEX.test(phone)) {
+      toast.error('Введите телефон в международном формате с кодом страны');
       setIsSubmitting(false);
       return;
     }
@@ -302,7 +301,7 @@ export default function NewOrderPage() {
     if (isClientRole && hasContactDiff && contactUpdateDecision === 'update') {
       try {
         await api.patch('/users/me', {
-          full_name: formData.full_name,
+          full_name: formData.full_name.trim(),
           phone: phone,
           telegram: normalizeTelegram(formData.telegram || '') || undefined,
         });
@@ -313,10 +312,8 @@ export default function NewOrderPage() {
           preferred_language: formData.preferred_language || 'ru',
         });
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || 'Не удалось обновить профиль перед созданием заказа');
-        setStep(3);
-        setIsSubmitting(false);
-        return;
+        console.error('Profile sync failed before order creation', err?.response?.data || err);
+        toast.warning('Не удалось обновить профиль. Заказ будет создан с текущими данными аккаунта.');
       }
     }
 

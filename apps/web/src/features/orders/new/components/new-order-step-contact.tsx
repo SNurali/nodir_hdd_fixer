@@ -1,5 +1,5 @@
-import { Phone, Send } from 'lucide-react';
-import type { ChangeEvent } from 'react';
+import { Send } from 'lucide-react';
+import { PhoneInput } from '@/components/phone-input';
 import type {
   ClientProfileSnapshot,
   ContactUpdateDecision,
@@ -47,11 +47,6 @@ export function NewOrderStepContact({
   onUpdateDecisionChange,
   onKeepProfileContacts,
 }: NewOrderStepContactProps) {
-  const handlePhoneChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const digits = event.target.value.replace(/\D/g, '').slice(0, 9);
-    onPhoneChange('+998' + digits);
-  };
-
   return (
     <>
       <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
@@ -71,26 +66,31 @@ export function NewOrderStepContact({
 
         <div>
           <label className="input-label">{phoneLabel}</label>
-          <div className="relative">
-            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={handlePhoneChange}
-              placeholder="+998901234567"
-              className={`input-field pl-12 ${
-                phoneError
-                  ? 'border-red-500 focus:border-red-500'
-                  : formData.phone && !phoneError
-                    ? 'border-green-500 focus:border-green-500'
-                    : ''
-              }`}
-            />
-          </div>
+          <PhoneInput
+            value={formData.phone}
+            onChange={onPhoneChange}
+            name="guest_phone"
+            inputClassName={`input-field rounded-none border-0 bg-transparent px-4 py-0 pr-11 shadow-none ring-0 ${
+              phoneError
+                ? 'text-red-500'
+                : formData.phone && !phoneError
+                  ? 'text-green-600 dark:text-green-400'
+                  : ''
+            }`}
+            wrapperClassName={`input-field overflow-hidden p-0 ${
+              phoneError
+                ? 'border-red-500 focus-within:border-red-500 focus-within:ring-red-500/10'
+                : formData.phone && !phoneError
+                  ? 'border-green-500 focus-within:border-green-500 focus-within:ring-green-500/10'
+                  : ''
+            }`}
+            buttonClassName="border-white/10 bg-white/5 dark:bg-white/5"
+            dropdownClassName="bg-white dark:bg-slate-900"
+          />
           {phoneError ? (
             <p className="text-xs text-red-500 mt-1 ml-1 flex items-center gap-1">⚠️ {phoneError}</p>
           ) : (
-            <p className="text-xs text-gray-400 mt-1 ml-1">📱 Формат: +998901234567 (9 цифр после +998)</p>
+            <p className="text-xs text-gray-400 mt-1 ml-1">📱 Используйте международный формат с кодом страны</p>
           )}
         </div>
 

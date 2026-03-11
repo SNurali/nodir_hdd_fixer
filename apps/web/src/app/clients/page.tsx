@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import api from '@/lib/api';
 import { formatMoney } from '@/lib/money';
+import { PhoneInput } from '@/components/phone-input';
+import { toOptionalTrimmedString } from '@/lib/payload';
 import {
     ChevronLeft, Plus, Search, User, Phone, Mail, Globe,
     ExternalLink, Loader2, Edit3, Trash2, Save, X, Check
@@ -53,7 +55,13 @@ export default function ClientsPage() {
         setError('');
         setLoading(true);
         try {
-            await api.post('/clients', newClient);
+            await api.post('/clients', {
+                full_name: newClient.full_name.trim(),
+                phone: newClient.phone.trim(),
+                email: toOptionalTrimmedString(newClient.email),
+                telegram: toOptionalTrimmedString(newClient.telegram),
+                preferred_language: newClient.preferred_language,
+            });
             setShowAddModal(false);
             setNewClient({ full_name: '', phone: '', email: '', telegram: '', preferred_language: 'ru' });
             mutate();
@@ -80,7 +88,13 @@ export default function ClientsPage() {
     const handleSaveEdit = async (clientId: string) => {
         setLoading(true);
         try {
-            await api.patch(`/clients/${clientId}`, editForm);
+            await api.patch(`/clients/${clientId}`, {
+                full_name: editForm.full_name.trim(),
+                phone: toOptionalTrimmedString(editForm.phone),
+                email: toOptionalTrimmedString(editForm.email),
+                telegram: toOptionalTrimmedString(editForm.telegram),
+                preferred_language: editForm.preferred_language,
+            });
             setEditingClient(null);
             mutate();
             setMessage('✅ Клиент обновлён');
@@ -167,8 +181,17 @@ export default function ClientsPage() {
                                     <div className="space-y-3">
                                         <input type="text" value={editForm.full_name} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
                                             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm" placeholder="ФИО" />
-                                        <input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm" placeholder="Телефон" />
+                                        <PhoneInput
+                                            value={editForm.phone}
+                                            onChange={(value) => setEditForm({ ...editForm, phone: value })}
+                                            name="phone"
+                                            showCountryName={false}
+                                            wrapperClassName="rounded-lg border border-white/20 bg-white/10"
+                                            buttonClassName="min-w-[96px] border-white/10 bg-white/5"
+                                            inputClassName="px-3 py-2 text-sm text-white placeholder:text-white/40"
+                                            dropdownClassName="border-white/10 bg-[#0f1117]"
+                                            searchClassName="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                                        />
                                         <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                                             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm" placeholder="Email" />
                                         <input type="text" value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })}
@@ -262,7 +285,17 @@ export default function ClientsPage() {
                                 </div>
                                 <div>
                                     <label className="input-label">Телефон *</label>
-                                    <input type="tel" required value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} className="input-field" placeholder="+998 90 123-45-67" />
+                                    <PhoneInput
+                                        value={newClient.phone}
+                                        onChange={(value) => setNewClient({ ...newClient, phone: value })}
+                                        name="phone"
+                                        required
+                                        wrapperClassName="input-field overflow-hidden p-0"
+                                        buttonClassName="border-white/10 bg-white/5"
+                                        inputClassName="input-field rounded-none border-0 bg-transparent px-4 py-0 shadow-none ring-0"
+                                        dropdownClassName="border-white/10 bg-[#0f1117]"
+                                        searchClassName="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                                    />
                                 </div>
                                 <div>
                                     <label className="input-label">Email</label>

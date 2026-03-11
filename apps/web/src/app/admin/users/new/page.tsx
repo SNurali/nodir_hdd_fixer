@@ -7,6 +7,8 @@ import { useAuth } from '@/app/auth-provider';
 import api from '@/lib/api';
 import useSWR from 'swr';
 import { ArrowLeft, UserPlus, Loader2 } from 'lucide-react';
+import { PhoneInput } from '@/components/phone-input';
+import { toOptionalTrimmedString } from '@/lib/payload';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -39,7 +41,14 @@ export default function NewUserPage() {
         }
         setLoading(true);
         try {
-            await api.post('/users', form);
+            await api.post('/users', {
+                full_name: form.full_name.trim(),
+                email: toOptionalTrimmedString(form.email),
+                phone: toOptionalTrimmedString(form.phone),
+                password: form.password,
+                role_id: form.role_id,
+                preferred_language: form.preferred_language,
+            });
             setMessage(`✅ ${t('admin_new_user.created_success')}`);
             setTimeout(() => router.push('/admin/users'), 1500);
         } catch (err: any) {
@@ -78,8 +87,16 @@ export default function NewUserPage() {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-500 mb-2">{t('client.phone')}</label>
-                            <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="+998..." />
+                            <PhoneInput
+                                value={form.phone}
+                                onChange={(value) => setForm({ ...form, phone: value })}
+                                name="phone"
+                                wrapperClassName="rounded-xl border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500/20"
+                                buttonClassName="border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/70"
+                                inputClassName="px-4 py-3 text-sm"
+                                dropdownClassName="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+                                searchClassName="border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                            />
                         </div>
                     </div>
                     <div>

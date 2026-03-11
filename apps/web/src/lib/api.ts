@@ -52,7 +52,7 @@ api.interceptors.response.use(
           if (typeof err === 'string') {
             if (err.includes('equipment_id')) return 'Выберите оборудование';
             if (err.includes('issue_id')) return 'Выберите проблему';
-            if (err.includes('guest_phone') || err.includes('Invalid phone')) return 'Неверный формат телефона. Пример: +998901234567';
+            if (err.includes('guest_phone') || err.includes('Invalid phone') || err.includes('international E.164')) return 'Неверный формат телефона. Укажите номер в международном формате, например +998901234567';
             if (err.includes('guest_name')) return 'Введите имя (минимум 2 символа)';
             if (err.includes('Invalid uuid')) return 'Неверные данные. Перезагрузите страницу';
             if (err.includes('required') || err.includes('client_id or guest')) return 'Заполните все обязательные поля';

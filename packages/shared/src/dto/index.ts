@@ -5,7 +5,7 @@ import { OrderStatus, PaymentType, Currency, Language } from '../enums/index';
 // ===== Auth =====
 export const RegisterDto = z.object({
     full_name: z.string().min(2).max(255),
-    phone: z.string().regex(/^\+998\d{9}$/, 'Phone must be +998XXXXXXXXX'),
+    phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone must be in international E.164 format'),
     email: z.string().email().optional(),
     telegram: z.string().max(100).optional(),
     password: z.string().min(6).max(100),
@@ -29,7 +29,7 @@ export const ResetPasswordDto = z.object({
 // ===== Client =====
 export const CreateClientDto = z.object({
     full_name: z.string().min(2).max(255),
-    phone: z.string().regex(/^\+998\d{9}$/),
+    phone: z.string().regex(/^\+[1-9]\d{1,14}$/),
     telegram: z.string().max(100).optional(),
     email: z.string().email().optional(),
     preferred_language: z.nativeEnum(Language).default(Language.RU),
@@ -140,7 +140,7 @@ export const CompleteDetailDto = z.object({
 export const CreateUserDto = z.object({
     full_name: z.string().min(2).max(255),
     email: z.string().email().optional(),
-    phone: z.string().regex(/^\+998\d{9}$/).optional(),
+    phone: z.string().regex(/^\+[1-9]\d{1,14}$/).optional(),
     telegram: z.string().max(100).optional(),
     password: z.string().min(6).max(100),
     role_id: z.string().uuid(),
@@ -150,7 +150,7 @@ export const CreateUserDto = z.object({
 export const UpdateUserDto = z.object({
     full_name: z.string().min(2).max(255).optional(),
     email: z.string().email().optional(),
-    phone: z.string().regex(/^\+998\d{9}$/).optional(),
+    phone: z.string().regex(/^\+[1-9]\d{1,14}$/).optional(),
     telegram: z.string().max(100).optional(),
     preferred_language: z.enum(LANGUAGES).optional(),
 });

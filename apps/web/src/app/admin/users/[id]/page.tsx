@@ -7,8 +7,10 @@ import { useAuth } from '@/app/auth-provider';
 import { useAppSettings } from '@/app/app-settings-provider';
 import useSWR from 'swr';
 import api from '@/lib/api';
+import { PhoneInput } from '@/components/phone-input';
+import { toOptionalTrimmedString } from '@/lib/payload';
 import {
-  ArrowLeft, User as UserIcon, Mail, Phone, Shield, Save, X,
+  ArrowLeft, User as UserIcon, Mail, Shield, Save, X,
   CheckCircle, AlertCircle, Loader2
 } from 'lucide-react';
 
@@ -61,7 +63,12 @@ export default function AdminUserEditPage() {
     setSuccess(null);
 
     try {
-      await api.patch(`/users/${userId}`, formData);
+      await api.patch(`/users/${userId}`, {
+        full_name: formData.full_name.trim(),
+        email: toOptionalTrimmedString(formData.email),
+        phone: toOptionalTrimmedString(formData.phone),
+        preferred_language: formData.preferred_language,
+      });
       setSuccess(t('admin_user_detail.user_updated_success'));
       mutate();
     } catch (err: any) {
@@ -224,16 +231,16 @@ export default function AdminUserEditPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('client.phone')}
               </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+998901234567"
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800"
-                />
-              </div>
+              <PhoneInput
+                value={formData.phone}
+                onChange={(value) => setFormData({ ...formData, phone: value })}
+                name="phone"
+                wrapperClassName="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500/20"
+                buttonClassName="border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/70"
+                inputClassName="px-4 py-2.5"
+                dropdownClassName="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+                searchClassName="border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+              />
             </div>
 
             {/* Role */}

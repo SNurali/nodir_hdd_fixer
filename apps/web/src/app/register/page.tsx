@@ -7,7 +7,6 @@ import { useTheme } from '@/components/theme-provider';
 import { motion } from 'framer-motion';
 import {
   Shield,
-  Phone,
   Lock,
   Loader2,
   ArrowRight,
@@ -18,12 +17,13 @@ import {
   Send
 } from 'lucide-react';
 import api from '@/lib/api';
+import { PhoneInput } from '@/components/phone-input';
 
 export default function RegisterPage() {
   const [mounted, setMounted] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
-    phone: '+998',
+    phone: '',
     email: '',
     telegram: '',
     password: '',
@@ -221,17 +221,16 @@ export default function RegisterPage() {
 
               <div>
                 <label className="input-label">Телефон</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); const digits = val.slice(0, 9); setFormData({ ...formData, phone: '+998' + digits }); }}
-                    className="input-field pl-12"
-                    disabled={loading}
-                  />
-                </div>
+                <PhoneInput
+                  value={formData.phone}
+                  onChange={(value) => setFormData({ ...formData, phone: value })}
+                  name="phone"
+                  required
+                  disabled={loading}
+                  wrapperClassName="input-field overflow-hidden p-0"
+                  buttonClassName="border-[color:var(--color-border)] bg-[color:var(--color-background-secondary)]"
+                  inputClassName="input-field rounded-none border-0 bg-transparent px-4 py-0 shadow-none ring-0"
+                />
               </div>
 
               <div>

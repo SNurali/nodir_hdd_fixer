@@ -7,7 +7,6 @@ import { useI18n } from '@/i18n/provider';
 import { useTheme } from '@/components/theme-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Phone,
   Lock,
   Loader2,
   ArrowRight,
@@ -27,6 +26,7 @@ import api from '@/lib/api';
 import { Logo } from '@/components/logo';
 import { CyberBackgroundSimple } from '@/components/cyber-background';
 import { GoogleSignInButton, AuthDivider } from '@/components/google-sign-in-button';
+import { PhoneInput } from '@/components/phone-input';
 import { getApiBaseUrl } from '@/lib/api-url';
 
 type AuthMode = 'login' | 'forgot' | 'reset';
@@ -34,10 +34,9 @@ type LoginType = 'phone' | 'email';
 
 export default function LoginPage() {
   const [loginType, setLoginType] = useState<LoginType>('phone');
-  const [phone, setPhone] = useState('+998');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [forgotLogin, setForgotLogin] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -85,15 +84,6 @@ export default function LoginPage() {
     return () => clearTimeout(mountTimer);
   }, [authLoading, router, user]);
 
-  const handlePhoneChange = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(3);
-    if (digits.length === 0) {
-      setPhone('+998');
-    } else {
-      setPhone('+998' + digits.slice(0, 9));
-    }
-  };
-
   const handleGoogleSignIn = () => {
     // Redirect to Google OAuth endpoint
     const apiBaseUrl = getApiBaseUrl();
@@ -124,7 +114,7 @@ export default function LoginPage() {
     setError('');
     setInfo('');
 
-    const normalizedLogin = forgotLogin.trim();
+    const normalizedLogin = (loginType === 'phone' ? phone : email).trim();
     if (!normalizedLogin) {
       setError('Введите номер телефона или email');
       return;
@@ -144,7 +134,6 @@ export default function LoginPage() {
       setError(err.response?.data?.message || 'Не удалось отправить запрос на сброс');
     } finally {
       setLoading(false);
-      setForgotLogin('');
     }
   };
 
@@ -293,7 +282,7 @@ export default function LoginPage() {
                 }`}>
                   <button
                     type="button"
-                    onClick={() => { setLoginType('phone'); setPhone('+998'); setEmail(''); }}
+                    onClick={() => { setLoginType('phone'); setPhone(''); setEmail(''); }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                       loginType === 'phone'
                         ? isDark 
@@ -309,7 +298,7 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setLoginType('email'); setPhone('+998'); setEmail(''); }}
+                    onClick={() => { setLoginType('email'); setPhone(''); setEmail(''); }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                       loginType === 'email'
                         ? isDark 
@@ -332,27 +321,29 @@ export default function LoginPage() {
                   }`}>
                     {loginType === 'phone' ? 'Номер телефона' : 'Электронная почта'}
                   </label>
-                  <div className="relative">
+                  <div>
                     {loginType === 'phone' ? (
-                      <>
-                        <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 ${
-                          isDark ? 'text-slate-500' : 'text-slate-400'
-                        }`} size={20} />
-                        <input
-                          type="tel"
-                          required
-                          value={phone}
-                          onChange={(e) => handlePhoneChange(e.target.value)}
-                          placeholder="+998 90 123 45 67"
-                          className={`w-full rounded-xl py-3 pl-12 pr-4 text-base outline-none transition-all duration-300 ${
-                            isDark
-                              ? 'bg-slate-800 border border-slate-700 text-slate-100 focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20 placeholder-slate-500'
-                              : 'bg-white border border-slate-200 text-slate-900 focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/20 placeholder-slate-400'
-                          }`}
-                          disabled={loading}
-                          autoComplete="off"
-                        />
-                      </>
+                      <PhoneInput
+                        value={phone}
+                        onChange={setPhone}
+                        name="login"
+                        required
+                        disabled={loading}
+                        autoComplete="tel"
+                        wrapperClassName={isDark
+                          ? 'bg-slate-800 border-slate-700 focus-within:border-sky-500/50 focus-within:ring-sky-500/20'
+                          : 'bg-white border-slate-200 focus-within:border-sky-500/50 focus-within:ring-sky-500/20'}
+                        buttonClassName={isDark
+                          ? 'border-slate-700 hover:bg-slate-700/80'
+                          : 'border-slate-200 hover:bg-slate-50'}
+                        inputClassName={isDark
+                          ? 'text-slate-100 placeholder:text-slate-500'
+                          : 'text-slate-900 placeholder:text-slate-400'}
+                        dropdownClassName={isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}
+                        searchClassName={isDark
+                          ? 'border-slate-700 bg-slate-800 text-slate-100'
+                          : 'border-slate-200 bg-slate-50 text-slate-900'}
+                      />
                     ) : (
                       <>
                         <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 ${
@@ -360,6 +351,7 @@ export default function LoginPage() {
                         }`} size={20} />
                         <input
                           type="email"
+                          name="login"
                           required
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
@@ -421,7 +413,6 @@ export default function LoginPage() {
                     disabled={loading}
                     onClick={() => {
                       setMode('forgot');
-                      setForgotLogin(loginType === 'phone' ? phone : email);
                       setError('');
                       setInfo('');
                     }}
@@ -467,31 +458,93 @@ export default function LoginPage() {
                   </p>
                 </div>
 
+                <div className={`flex rounded-xl p-1 ${
+                  isDark ? 'bg-slate-800' : 'bg-slate-100'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => { setLoginType('phone'); setPhone(''); setEmail(''); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
+                      loginType === 'phone'
+                        ? isDark
+                          ? 'bg-slate-700 text-amber-400 shadow-lg'
+                          : 'bg-white text-amber-600 shadow-md'
+                        : isDark
+                          ? 'text-slate-400 hover:text-slate-300'
+                          : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Smartphone size={16} />
+                    Телефон
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setLoginType('email'); setPhone(''); setEmail(''); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
+                      loginType === 'email'
+                        ? isDark
+                          ? 'bg-slate-700 text-amber-400 shadow-lg'
+                          : 'bg-white text-amber-600 shadow-md'
+                        : isDark
+                          ? 'text-slate-400 hover:text-slate-300'
+                          : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Mail size={16} />
+                    Email
+                  </button>
+                </div>
+
                 <div>
                   <label className={`block text-sm font-semibold mb-2 ${
                     isDark ? 'text-slate-300' : 'text-slate-700'
                   }`}>
-                    Номер телефона или Email
+                    {loginType === 'phone' ? 'Номер телефона' : 'Email'}
                   </label>
-                  <div className="relative">
-                    <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 ${
-                      isDark ? 'text-slate-500' : 'text-slate-400'
-                    }`} size={20} />
-                    <input
-                      type="text"
+                  {loginType === 'phone' ? (
+                    <PhoneInput
+                      value={phone}
+                      onChange={setPhone}
+                      name="forgot_login"
                       required
-                      value={forgotLogin}
-                      onChange={(e) => setForgotLogin(e.target.value)}
-                      placeholder="+998 90 123 45 67 или example@mail.uz"
-                      className={`w-full rounded-xl py-3 pl-12 pr-4 text-base outline-none transition-all duration-300 ${
-                        isDark
-                          ? 'bg-slate-800 border border-slate-700 text-slate-100 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 placeholder-slate-500'
-                          : 'bg-white border border-slate-200 text-slate-900 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 placeholder-slate-400'
-                      }`}
                       disabled={loading}
-                      autoComplete="off"
+                      autoComplete="tel"
+                      wrapperClassName={isDark
+                        ? 'bg-slate-800 border-slate-700 focus-within:border-amber-500/50 focus-within:ring-amber-500/20'
+                        : 'bg-white border-slate-200 focus-within:border-amber-500/50 focus-within:ring-amber-500/20'}
+                      buttonClassName={isDark
+                        ? 'border-slate-700 hover:bg-slate-700/80'
+                        : 'border-slate-200 hover:bg-slate-50'}
+                      inputClassName={isDark
+                        ? 'text-slate-100 placeholder:text-slate-500'
+                        : 'text-slate-900 placeholder:text-slate-400'}
+                      dropdownClassName={isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}
+                      searchClassName={isDark
+                        ? 'border-slate-700 bg-slate-800 text-slate-100'
+                        : 'border-slate-200 bg-slate-50 text-slate-900'}
                     />
-                  </div>
+                  ) : (
+                    <div className="relative">
+                      <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 ${
+                        isDark ? 'text-slate-500' : 'text-slate-400'
+                      }`} size={20} />
+                      <input
+                        type="email"
+                        name="forgot_login"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="example@mail.uz"
+                        className={`w-full rounded-xl py-3 pl-12 pr-4 text-base outline-none transition-all duration-300 ${
+                          isDark
+                            ? 'bg-slate-800 border border-slate-700 text-slate-100 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 placeholder-slate-500'
+                            : 'bg-white border border-slate-200 text-slate-900 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 placeholder-slate-400'
+                        }`}
+                        disabled={loading}
+                        autoComplete="off"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -505,12 +558,11 @@ export default function LoginPage() {
                 <button
                   type="button"
                   disabled={loading}
-                  onClick={() => {
-                    setMode('login');
-                    setError('');
-                    setInfo('');
-                    setForgotLogin('');
-                  }}
+                    onClick={() => {
+                      setMode('login');
+                      setError('');
+                      setInfo('');
+                    }}
                   className={`w-full flex items-center justify-center gap-2 py-3 font-medium transition-all ${
                     isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'
                   }`}

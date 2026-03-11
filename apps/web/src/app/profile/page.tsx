@@ -7,6 +7,8 @@ import { useAppSettings } from '@/app/app-settings-provider';
 import { useI18n } from '@/i18n/provider';
 import api from '@/lib/api';
 import { getPublicApiUrl } from '@/lib/api-url';
+import { PhoneInput } from '@/components/phone-input';
+import { toOptionalTrimmedString } from '@/lib/payload';
 import useSWR from 'swr';
 import {
     ArrowLeft, User, Lock, Save, Loader2, CheckCircle2, XCircle, Mail, Phone, Settings2, Upload, Send
@@ -137,7 +139,12 @@ export default function ProfilePage() {
     const handleSaveProfile = async () => {
         setSavingProfile(true);
         try {
-            await api.patch('/users/me', profileForm);
+            await api.patch('/users/me', {
+                full_name: profileForm.full_name.trim(),
+                email: toOptionalTrimmedString(profileForm.email),
+                phone: toOptionalTrimmedString(profileForm.phone),
+                telegram: toOptionalTrimmedString(profileForm.telegram),
+            });
             setMessage(`✅ ${t('profile.messages.profile_updated')}`);
             updateUser({ full_name: profileForm.full_name });
             mutate();
@@ -346,11 +353,15 @@ export default function ProfilePage() {
                                 <label className="block text-sm font-medium text-gray-500 mb-2">
                                     <Phone size={14} className="inline mr-1" />{t('client.phone')}
                                 </label>
-                                <input
-                                    type="tel"
+                                <PhoneInput
                                     value={profileForm.phone}
-                                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onChange={(value) => setProfileForm({ ...profileForm, phone: value })}
+                                    name="phone"
+                                    wrapperClassName="rounded-xl border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500/20"
+                                    buttonClassName="border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/70"
+                                    inputClassName="px-4 py-3"
+                                    dropdownClassName="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+                                    searchClassName="border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
                                 />
                             </div>
                             <div>
