@@ -16,6 +16,7 @@
     "build": "turbo run build",
     "build:api": "npm run build --workspace=apps/api",
     "build:web": "npm run build --workspace=apps/web",
+    "build:shared": "npm run build --workspace=packages/shared",
     "start:api": "node apps/api/dist/main.js",
     "start:web": "npm run start --workspace=apps/web",
     "start:prod": "bash scripts/deploy.sh",

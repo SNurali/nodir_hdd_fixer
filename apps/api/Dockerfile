@@ -13,6 +13,7 @@ RUN npm ci
 
 # Copy source code and build
 COPY . .
+RUN npm run build:shared
 RUN npm run build:api
 
 # Production image
