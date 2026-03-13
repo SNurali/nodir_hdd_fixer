@@ -225,7 +225,7 @@ export function LogoText({ showIcon = true, iconSize = 40, className = "" }: Log
       {showIcon && <Logo size={iconSize} />}
       <div className="flex flex-col">
         <span className="text-2xl font-bold bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
-          HDD FIXER
+          RECOVERY.UZ
         </span>
         <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-medium">
           Data Recovery Service

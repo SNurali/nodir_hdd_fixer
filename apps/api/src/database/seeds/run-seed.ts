@@ -19,6 +19,78 @@ async function runSeed() {
     await dataSource.initialize();
     console.log('🌱 Starting seed...');
 
+    const ensureUser = async (params: {
+        fullName: string;
+        email?: string;
+        phone?: string;
+        password: string;
+        roleName: 'admin' | 'operator' | 'master' | 'client';
+        preferredLanguage?: string;
+    }) => {
+        const roleRows = await dataSource.query(
+            `SELECT id FROM roles WHERE name_eng = $1`,
+            [params.roleName],
+        );
+
+        if (roleRows.length === 0) {
+            throw new Error(`Role '${params.roleName}' not found`);
+        }
+
+        const existingUser = await dataSource.query(
+            `SELECT id, email, phone FROM users WHERE email = $1 OR phone = $2 LIMIT 1`,
+            [params.email || null, params.phone || null],
+        );
+
+        let userId = existingUser[0]?.id as string | undefined;
+
+        if (!userId) {
+            const passwordHash = await bcrypt.hash(params.password, 10);
+            const insertedUsers = await dataSource.query(
+                `INSERT INTO users (full_name, email, phone, password_hash, role_id, preferred_language)
+                 VALUES ($1, $2, $3, $4, $5, $6)
+                 RETURNING id`,
+                [
+                    params.fullName,
+                    params.email || null,
+                    params.phone || null,
+                    passwordHash,
+                    roleRows[0].id,
+                    params.preferredLanguage || 'ru',
+                ],
+            );
+            userId = insertedUsers[0].id;
+            console.log(
+                `  ✅ User created (${params.roleName}): ${params.email || params.phone} / ${params.password}`,
+            );
+        } else {
+            console.log(`  ⏭️  User already exists (${params.roleName}): ${params.email || params.phone}`);
+        }
+
+        if (params.roleName !== 'client' || !params.phone) {
+            return;
+        }
+
+        const existingClient = await dataSource.query(
+            `SELECT id FROM clients WHERE user_id = $1 OR phone = $2 LIMIT 1`,
+            [userId, params.phone],
+        );
+
+        if (existingClient.length === 0) {
+            await dataSource.query(
+                `INSERT INTO clients (user_id, full_name, phone, email, preferred_language)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [
+                    userId,
+                    params.fullName,
+                    params.phone,
+                    params.email || null,
+                    params.preferredLanguage || 'ru',
+                ],
+            );
+            console.log(`     └─ Client profile created for ${params.phone}`);
+        }
+    };
+
     // Seed Roles
     const roles = [
         {
@@ -64,33 +136,49 @@ async function runSeed() {
         }
     }
 
-    // Seed Admin User
-    const adminRole = await dataSource.query(
-        `SELECT id FROM roles WHERE name_eng = 'admin'`,
-    );
-    if (adminRole.length > 0) {
-        const adminExists = await dataSource.query(
-            `SELECT id FROM users WHERE email = 'admin@hdd-fixer.uz'`,
-        );
-        if (adminExists.length === 0) {
-            const passwordHash = await bcrypt.hash('admin123', 10);
-            await dataSource.query(
-                `INSERT INTO users (full_name, email, phone, password_hash, role_id, preferred_language)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-                [
-                    'System Admin',
-                    'admin@hdd-fixer.uz',
-                    '+998900000001',
-                    passwordHash,
-                    adminRole[0].id,
-                    'ru',
-                ],
-            );
-            console.log(`  ✅ Admin user created (admin@hdd-fixer.uz / admin123)`);
-        } else {
-            console.log(`  ⏭️  Admin user already exists`);
-        }
-    }
+    // Seed developer and test accounts used across docs, tests, and manual QA.
+    await ensureUser({
+        fullName: 'System Admin',
+        email: 'admin@hdd-fixer.uz',
+        phone: '+998900000001',
+        password: 'admin123',
+        roleName: 'admin',
+    });
+    await ensureUser({
+        fullName: 'Admin Test',
+        email: 'admin@test.uz',
+        phone: '+998901111111',
+        password: 'admin123',
+        roleName: 'admin',
+    });
+    await ensureUser({
+        fullName: 'Operator Test',
+        email: 'operator@test.uz',
+        phone: '+998902222222',
+        password: 'operator123',
+        roleName: 'operator',
+    });
+    await ensureUser({
+        fullName: 'Master Test',
+        email: 'master@test.uz',
+        phone: '+998903333333',
+        password: 'master123',
+        roleName: 'master',
+    });
+    await ensureUser({
+        fullName: 'Client Test',
+        email: 'client@test.uz',
+        phone: '+998904444444',
+        password: 'client123',
+        roleName: 'client',
+    });
+    await ensureUser({
+        fullName: 'Regression Test Client',
+        email: 'legacy-client@test.uz',
+        phone: '+998901234567',
+        password: 'password123',
+        roleName: 'client',
+    });
 
     // Seed Sample Equipments
     const equipments = [
@@ -230,6 +318,15 @@ async function runSeed() {
         }
     }
 
+    console.log('\n📋 Seeded credentials:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('  admin@hdd-fixer.uz    / admin123');
+    console.log('  admin@test.uz         / admin123');
+    console.log('  operator@test.uz      / operator123');
+    console.log('  master@test.uz        / master123');
+    console.log('  client@test.uz        / client123');
+    console.log('  +998901234567         / password123');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('\n🌱 Seed completed!');
     await dataSource.destroy();
 }

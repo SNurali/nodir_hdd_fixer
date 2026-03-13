@@ -33,6 +33,8 @@ vi.mock('@/components/theme-provider', () => ({
 vi.mock('@/i18n/provider', () => ({
   useI18n: () => ({
     t: (key: string) => key,
+    language: 'ru',
+    setLanguage: () => {},
   }),
 }));
 
@@ -44,6 +46,7 @@ vi.mock('@/lib/api', () => ({
 
 describe('LoginPage', () => {
   const apiPostMock = vi.mocked(api.post);
+  let originalLocation: Location;
 
   beforeEach(() => {
     mockRouter.push.mockReset();
@@ -56,6 +59,16 @@ describe('LoginPage', () => {
       isLoading: false,
     };
     window.history.pushState({}, '', '/login');
+    originalLocation = window.location;
+  });
+
+  afterEach(() => {
+    // Restore location after each test
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('redirects authenticated users away from login page', async () => {
@@ -74,19 +87,31 @@ describe('LoginPage', () => {
 
   it('submits login form and navigates to dashboard', async () => {
     mockLogin.mockResolvedValue(undefined);
+    // Mock window.location.href to prevent actual navigation
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...originalLocation,
+        href: '',
+        assign: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
 
     render(<LoginPage />);
 
-    await screen.findByText('login.sign_in');
+    await screen.findByText('Войти');
 
     const inputs = screen.getAllByRole('textbox');
     await userEvent.type(inputs[0], 'admin@test.uz');
-    await userEvent.type(screen.getByPlaceholderText('login.password_placeholder'), 'secret123');
-    await userEvent.click(screen.getByRole('button', { name: /login\.sign_in/i }));
+    const passwordInputs = screen.getAllByPlaceholderText(/••••••••/);
+    await userEvent.type(passwordInputs[0], 'secret123');
+    const loginButtons = screen.getAllByRole('button', { name: /Войти/i });
+    await userEvent.click(loginButtons[0]);
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('admin@test.uz', 'secret123');
-      expect(mockRouter.push).toHaveBeenCalledWith('/');
+      expect(window.location.href).toBe('/');
     });
   });
 
@@ -98,13 +123,27 @@ describe('LoginPage', () => {
       },
     });
 
+    // Mock window.location for this test too
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...originalLocation,
+        href: '',
+        assign: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
     render(<LoginPage />);
 
-    await screen.findByText('login.sign_in');
+    await screen.findByText('Войти');
     await userEvent.click(screen.getByRole('button', { name: 'Забыли пароль?' }));
 
     await screen.findByText('Восстановление пароля');
-    await userEvent.type(screen.getByPlaceholderText('Введите номер или email'), 'client@test.uz');
+    // Switch to email input
+    await userEvent.click(screen.getByRole('button', { name: /Email/i }));
+    const emailInput = await screen.findByPlaceholderText(/example@/);
+    await userEvent.type(emailInput, 'client@test.uz');
     await userEvent.click(screen.getByRole('button', { name: /Отправить/i }));
 
     await waitFor(() => {

@@ -11,7 +11,7 @@ import { PhoneInput } from '@/components/phone-input';
 import { toOptionalTrimmedString } from '@/lib/payload';
 import {
   ArrowLeft, User as UserIcon, Mail, Shield, Save, X,
-  CheckCircle, AlertCircle, Loader2
+  CheckCircle, AlertCircle, Loader2, Key
 } from 'lucide-react';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
@@ -31,9 +31,11 @@ export default function AdminUserEditPage() {
     role_id: '',
     preferred_language: 'ru',
   });
+  const [passwordForm, setPasswordForm] = useState({ password: '', confirm_password: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isPasswordFormOpen, setIsPasswordFormOpen] = useState(false);
 
   const { data: userData, isLoading, error: fetchError, mutate } = useSWR(
     userId ? `/users/${userId}` : null,
@@ -89,6 +91,36 @@ export default function AdminUserEditPage() {
       setFormData({ ...formData, role_id: roleId });
     } catch (err: any) {
       setError(err.response?.data?.message || t('admin_user_detail.role_changed_error'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (passwordForm.password !== passwordForm.confirm_password) {
+      setError('Пароли не совпадают');
+      return;
+    }
+
+    if (passwordForm.password.length < 6) {
+      setError('Пароль должен быть не менее 6 символов');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await api.post(`/users/${userId}/set-password`, {
+        password: passwordForm.password,
+      });
+      setSuccess('Пароль успешно установлен');
+      setPasswordForm({ password: '', confirm_password: '' });
+      setIsPasswordFormOpen(false);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Ошибка при установке пароля');
     } finally {
       setIsSaving(false);
     }
@@ -336,6 +368,89 @@ export default function AdminUserEditPage() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Password Management */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Key className="text-blue-500" size={20} />
+              Управление паролем
+            </h3>
+            {!isPasswordFormOpen && (
+              <button
+                onClick={() => setIsPasswordFormOpen(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Key size={16} />
+                Установить пароль
+              </button>
+            )}
+          </div>
+
+          {isPasswordFormOpen ? (
+            <form onSubmit={handleSetPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Новый пароль
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.password}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800"
+                  placeholder="Минимум 6 символов"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Подтверждение пароля
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.confirm_password}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800"
+                  placeholder="Повторите пароль"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+                >
+                  {isSaving ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <Save size={20} />
+                  )}
+                  Сохранить пароль
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPasswordFormOpen(false);
+                    setPasswordForm({ password: '', confirm_password: '' });
+                  }}
+                  className="px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <X size={20} />
+                  Отмена
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              <p>Нажмите кнопку "Установить пароль" чтобы создать или изменить пароль пользователя.</p>
+              <p className="mt-2 text-xs">Это действие установит новый пароль для входа пользователя в систему.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

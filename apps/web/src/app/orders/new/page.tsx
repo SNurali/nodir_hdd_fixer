@@ -302,7 +302,7 @@ export default function NewOrderPage() {
       try {
         await api.patch('/users/me', {
           full_name: formData.full_name.trim(),
-          phone: phone,
+          phone: phone || undefined,
           telegram: normalizeTelegram(formData.telegram || '') || undefined,
         });
         setProfileSnapshot({

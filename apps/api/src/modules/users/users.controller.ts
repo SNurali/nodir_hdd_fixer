@@ -24,7 +24,7 @@ import { JwtAuthGuard, RolesGuard } from '../../common/guards';
 import { Roles, CurrentUser } from '../../common/decorators';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { getAvatarUploadsDir } from '../../common/utils/uploads-path';
-import { CreateUserDto, UpdateUserDto, PaginationDto, ChangeUserRoleDto } from '@hdd-fixer/shared';
+import { CreateUserDto, UpdateUserDto, PaginationDto, ChangeUserRoleDto, AdminSetUserPasswordDto } from '@hdd-fixer/shared';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -157,5 +157,13 @@ export class UsersController {
     @UsePipes(new ZodValidationPipe(ChangeUserRoleDto))
     changeRole(@Param('id') id: string, @Body() dto: any) {
         return this.usersService.changeRole(id, dto);
+    }
+
+    @Post(':id/set-password')
+    @Roles('admin')
+    @ApiOperation({ summary: 'Set user password (admin only)' })
+    @UsePipes(new ZodValidationPipe(AdminSetUserPasswordDto))
+    async setPassword(@Param('id') id: string, @Body() dto: any, @CurrentUser('id') adminId: string) {
+        return this.usersService.setAdminUserPassword(id, dto);
     }
 }

@@ -133,7 +133,7 @@ export default function DashboardPage() {
                     ? 'bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent'
                     : 'bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent'
                 }`}>
-                  HDD FIXER
+                  RECOVERY.UZ
                 </h1>
                 <div className="flex items-center gap-3 mt-1">
                   <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>

@@ -104,7 +104,7 @@ export default function AdminUsersPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">HDD FIXER</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">RECOVERY.UZ</h1>
               <span className="text-sm text-gray-500">{t('admin_users.admin_panel')}</span>
             </div>
             <div className="flex items-center gap-4">

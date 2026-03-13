@@ -89,7 +89,7 @@ export default function TrackOrderPage() {
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <Wrench className="text-white" size={32} />
                     </div>
-                    <h1 className="text-3xl font-black italic tracking-tight">HDD FIXER</h1>
+                    <h1 className="text-3xl font-black italic tracking-tight">RECOVERY.UZ</h1>
                     <p className="text-gray-500 mt-2">Отслеживание статуса заказа</p>
                 </div>
 

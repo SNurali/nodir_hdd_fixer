@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { unlink } from 'fs/promises';
 import { z } from 'zod';
 import { UserEntity, RoleEntity, ClientEntity } from '../../database/entities';
-import { TCreateUserDto, TUpdateUserDto, TPaginationDto, TChangeUserRoleDto } from '@hdd-fixer/shared';
+import { TCreateUserDto, TUpdateUserDto, TPaginationDto, TChangeUserRoleDto, TAdminSetUserPasswordDto } from '@hdd-fixer/shared';
 import { toUploadsFilePath } from '../../common/utils/uploads-path';
 
 type AppRole = 'admin' | 'operator' | 'master' | 'client';
@@ -402,6 +402,8 @@ export class UsersService {
                     email: user.email,
                     preferred_language: user.preferred_language || 'ru',
                     telegram: user.telegram || null,
+                    gender: user.gender || null,
+                    date_of_birth: user.date_of_birth || null,
                 }),
             );
             return;
@@ -414,7 +416,23 @@ export class UsersService {
         client.email = user.email;
         client.preferred_language = user.preferred_language || client.preferred_language;
         client.telegram = user.telegram || null;
+        client.gender = user.gender || null;
+        client.date_of_birth = user.date_of_birth || null;
         await this.clientRepo.save(client);
+    }
+
+    async setAdminUserPassword(userId: string, dto: TAdminSetUserPasswordDto) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new NotFoundException('Пользователь не найден');
+        }
+
+        user.password_hash = await bcrypt.hash(dto.password, 10);
+        user.password_reset_token_hash = null;
+        user.password_reset_expires_at = null;
+        await this.userRepo.save(user);
+
+        return { success: true, message: 'Пароль успешно установлен' };
     }
 
     private normalizeTelegram(value: string | undefined): string | null {

@@ -1,3 +1,4 @@
+import { PhoneBadge } from '@/components/phone-display';
 import type { NewOrderFormData, OrderItemDraft } from '../types';
 
 interface NewOrderStepReviewProps {
@@ -48,9 +49,9 @@ export function NewOrderStepReview({
           <span className="text-gray-500 dark:text-gray-400">{fullNameLabel}</span>
           <span className="font-semibold text-foreground">{formData.full_name || '-'}</span>
         </div>
-        <div className="flex justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800">
           <span className="text-gray-500 dark:text-gray-400">{phoneLabel}</span>
-          <span className="font-semibold text-foreground">{formData.phone || '-'}</span>
+          {formData.phone ? <PhoneBadge phone={formData.phone} /> : <span className="font-semibold text-foreground">-</span>}
         </div>
       </div>
     </>

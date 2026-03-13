@@ -1,4 +1,5 @@
-import { Globe, Mail, MessageSquare, Phone, User } from 'lucide-react';
+import { Globe, Mail, MessageSquare, User } from 'lucide-react';
+import { PhoneDisplay } from '@/components/phone-display';
 import type { Order } from '../types';
 
 interface OrderClientContactsCardProps {
@@ -30,17 +31,7 @@ export function OrderClientContactsCard({ client }: OrderClientContactsCardProps
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-          <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <Phone size={18} className="text-green-600" />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Телефон</p>
-            <a href={`tel:${client.phone}`} className="font-bold text-blue-600 hover:underline">
-              {client.phone}
-            </a>
-          </div>
-        </div>
+        <PhoneDisplay phone={client.phone} />
 
         {client.email && (
           <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">

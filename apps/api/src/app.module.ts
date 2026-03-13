@@ -16,6 +16,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { MessagesModule } from './modules/messages/messages.module';
 import { HealthModule } from './modules/health/health.module';
 import { WebsocketsModule } from './modules/websockets/websockets.module';
+import { TelegramModule } from './modules/telegram/telegram.module';
 import { throttlerConfig } from './common/throttler/throttler.config';
 import { AppController } from './app.controller';
 
@@ -72,6 +73,7 @@ import { AppController } from './app.controller';
         MessagesModule,
         HealthModule,
         WebsocketsModule,
+        TelegramModule,
     ],
     controllers: [AppController],
 })

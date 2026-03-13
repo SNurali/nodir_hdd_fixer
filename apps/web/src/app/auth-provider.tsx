@@ -164,6 +164,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (userData) {
             localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
         }
+        // Force reload to sync auth state with server cookies
+        const dashboardPath = userData?.role === 'master' ? '/master/dashboard' : '/';
+        window.location.href = dashboardPath;
     };
 
     const updateUser = (patch: Partial<User>) => {

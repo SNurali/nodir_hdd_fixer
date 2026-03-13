@@ -5,6 +5,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PaymentEntity, OrderEntity, UserEntity, NotificationEntity, ClientEntity } from '../../database/entities';
 import { ConfigService } from '@nestjs/config';
+import { TelegramService } from '../telegram/telegram.service';
 import * as crypto from 'crypto';
 
 export type PaymentProvider = 'click' | 'payme' | 'uzumbank' | 'cash' | 'card' | 'free' | 'paynet' | 'uzum';
@@ -36,6 +37,7 @@ export class PaymentsService {
         private readonly notifQueue: Queue,
         private readonly dataSource: DataSource,
         private readonly configService: ConfigService,
+        private readonly telegramService: TelegramService,
     ) {
         this.clickMerchantId = this.configService.get('CLICK_MERCHANT_ID') || '';
         this.clickSecretKey = this.configService.get('CLICK_SECRET_KEY') || '';
@@ -137,6 +139,11 @@ export class PaymentsService {
             }
 
             await queryRunner.commitTransaction();
+
+            // Notify Telegram group about payment
+            const totalAmount = savedPayments.reduce((sum, p) => sum + p.paid_amount, 0);
+            const currency = savedPayments[0]?.currency || 'UZS';
+            await this.telegramService.notifyPaymentReceived(orderId, totalAmount, currency);
 
             this.logger.log(`Payment(s) created: ${savedPayments.map(p => p.id).join(', ')} for order ${orderId}`);
             return savedPayments.length === 1 ? savedPayments[0] : savedPayments;

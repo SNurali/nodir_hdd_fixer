@@ -6,7 +6,7 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { createHash, randomBytes } from 'crypto';
 import { UserEntity, ClientEntity, RoleEntity } from '../../database/entities';
-import { TLoginDto, TRegisterDto } from '@hdd-fixer/shared';
+import { TLoginDto, TRegisterDto, TAdminSetUserPasswordDto } from '@hdd-fixer/shared';
 import { createLogger } from '../../common/logger/pino.logger';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -58,6 +58,8 @@ export class AuthService {
             password_hash: passwordHash,
             role_id: clientRole.id,
             preferred_language: dto.preferred_language || 'ru',
+            gender: dto.gender || null,
+            date_of_birth: dto.date_of_birth || null,
         });
 
         await this.userRepo.save(user);
@@ -69,6 +71,8 @@ export class AuthService {
             telegram: dto.telegram?.trim() || null,
             email: dto.email || null,
             preferred_language: dto.preferred_language || 'ru',
+            gender: dto.gender || null,
+            date_of_birth: dto.date_of_birth || null,
         });
         await this.clientRepo.save(client);
 
@@ -224,6 +228,21 @@ export class AuthService {
         await this.userRepo.save(user);
 
         return { success: true, message: 'Пароль успешно сброшен. Теперь вы можете войти.' };
+    }
+
+    async setUserPassword(userId: string, dto: TAdminSetUserPasswordDto) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+
+        if (!user) {
+            throw new BadRequestException('Пользователь не найден');
+        }
+
+        user.password_hash = await bcrypt.hash(dto.password, 10);
+        user.password_reset_token_hash = null;
+        user.password_reset_expires_at = null;
+        await this.userRepo.save(user);
+
+        return { success: true, message: 'Пароль успешно установлен' };
     }
 
     private hashResetToken(token: string): string {

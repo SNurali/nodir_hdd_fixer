@@ -10,6 +10,8 @@ export const RegisterDto = z.object({
     telegram: z.string().max(100).optional(),
     password: z.string().min(6).max(100),
     preferred_language: z.nativeEnum(Language).default(Language.RU),
+    gender: z.enum(['male', 'female', 'other']).optional(),
+    date_of_birth: z.string().optional(),
 });
 
 export const LoginDto = z.object({
@@ -33,6 +35,8 @@ export const CreateClientDto = z.object({
     telegram: z.string().max(100).optional(),
     email: z.string().email().optional(),
     preferred_language: z.nativeEnum(Language).default(Language.RU),
+    gender: z.enum(['male', 'female', 'other']).optional(),
+    date_of_birth: z.string().optional(),
 });
 
 export const UpdateClientDto = CreateClientDto.partial();
@@ -145,18 +149,26 @@ export const CreateUserDto = z.object({
     password: z.string().min(6).max(100),
     role_id: z.string().uuid(),
     preferred_language: z.enum(LANGUAGES).default('ru'),
+    gender: z.enum(['male', 'female', 'other']).optional(),
+    date_of_birth: z.string().optional(),
 });
 
 export const UpdateUserDto = z.object({
     full_name: z.string().min(2).max(255).optional(),
-    email: z.string().email().optional(),
-    phone: z.string().regex(/^\+[1-9]\d{1,14}$/).optional(),
-    telegram: z.string().max(100).optional(),
+    email: z.string().email().optional().nullable(),
+    phone: z.string().regex(/^\+[1-9]\d{1,14}$/).optional().nullable(),
+    telegram: z.string().max(100).optional().nullable(),
     preferred_language: z.enum(LANGUAGES).optional(),
+    gender: z.enum(['male', 'female', 'other']).optional().nullable(),
+    date_of_birth: z.string().optional().nullable(),
 });
 
 export const ChangeUserRoleDto = z.object({
     role_id: z.string().uuid(),
+});
+
+export const AdminSetUserPasswordDto = z.object({
+    password: z.string().min(6).max(100),
 });
 
 // ===== Pagination =====
@@ -187,3 +199,4 @@ export type TCreateUserDto = z.infer<typeof CreateUserDto>;
 export type TUpdateUserDto = z.infer<typeof UpdateUserDto>;
 export type TPaginationDto = z.infer<typeof PaginationDto>;
 export type TChangeUserRoleDto = z.infer<typeof ChangeUserRoleDto>;
+export type TAdminSetUserPasswordDto = z.infer<typeof AdminSetUserPasswordDto>;

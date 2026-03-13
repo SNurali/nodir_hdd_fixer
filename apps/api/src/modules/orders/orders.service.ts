@@ -202,6 +202,9 @@ export class OrdersService {
             actionType: 'order_created',
         });
 
+        // Notify Telegram group about new order
+        await this.ordersNotificationsService.notifyTelegramNewOrder(savedOrder.id);
+
         return this.findOne(savedOrder.id, user);
     }
 
@@ -453,6 +456,9 @@ export class OrdersService {
             await this.ordersNotificationsService.notifyClientStatusChange(order, 'awaiting_approval');
         }
 
+        // Notify Telegram group about price set
+        await this.ordersNotificationsService.notifyTelegramPriceSet(id, newTotal, userId);
+
         return order;
     }
 
@@ -487,6 +493,9 @@ export class OrdersService {
         // Notify admins/operators that price is approved and repair can start
         await this.ordersNotificationsService.notifyAdmins(id, 'price_approved', order.language);
 
+        // Notify Telegram group about price approved
+        await this.ordersNotificationsService.notifyTelegramPriceApproved(id, order.client_id);
+
         return order;
     }
 
@@ -513,6 +522,9 @@ export class OrdersService {
 
         // Notify admins/operators
         await this.ordersNotificationsService.notifyAdmins(id, 'price_rejected', order.language);
+
+        // Notify Telegram group about price rejected
+        await this.ordersNotificationsService.notifyTelegramPriceRejected(id, reason, order.client_id);
 
         return order;
     }
@@ -555,6 +567,9 @@ export class OrdersService {
         // Notify master
         await this.ordersNotificationsService.queueTemplateToUser(masterId, orderId, 'order_assigned', 'ru');
 
+        // Notify Telegram group about master assigned
+        await this.ordersNotificationsService.notifyTelegramMasterAssigned(orderId, masterId);
+
         return detail;
     }
 
@@ -578,6 +593,9 @@ export class OrdersService {
 
         // Notify master
         await this.ordersNotificationsService.queueTemplateToUser(masterId, orderId, 'order_assigned', order.language);
+
+        // Notify Telegram group about master assigned
+        await this.ordersNotificationsService.notifyTelegramMasterAssigned(orderId, masterId);
 
         if (order.status === 'new') {
             const oldStatus = order.status;
@@ -886,6 +904,15 @@ export class OrdersService {
 
             // Notify client about status change
             await this.ordersNotificationsService.notifyClient(order, 'order_status_changed');
+
+            // Notify Telegram group about status change
+            await this.ordersNotificationsService.notifyTelegramStatusChange(
+                id,
+                order.status,
+                dto.status,
+                userId,
+                dto.reason,
+            );
         }
 
         if (dto.deadline) {

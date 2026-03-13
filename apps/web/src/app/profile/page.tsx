@@ -8,6 +8,8 @@ import { useI18n } from '@/i18n/provider';
 import api from '@/lib/api';
 import { getPublicApiUrl } from '@/lib/api-url';
 import { PhoneInput } from '@/components/phone-input';
+import { PhoneBadge } from '@/components/phone-display';
+import { AvatarCropper } from '@/components/avatar-cropper';
 import { toOptionalTrimmedString } from '@/lib/payload';
 import useSWR from 'swr';
 import {
@@ -86,13 +88,22 @@ export default function ProfilePage() {
     const { setUiSettings } = useAppSettings();
     const { t, setLanguage, language } = useI18n();
     const [message, setMessage] = useState('');
-    const [profileForm, setProfileForm] = useState({ full_name: '', email: '', phone: '', telegram: '' });
+    const [profileForm, setProfileForm] = useState({ 
+        full_name: '', 
+        email: '', 
+        phone: '', 
+        telegram: '',
+        gender: '' as 'male' | 'female' | 'other' | '',
+        date_of_birth: '',
+    });
     const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
     const [savingProfile, setSavingProfile] = useState(false);
     const [savingPassword, setSavingPassword] = useState(false);
     const [savingSettings, setSavingSettings] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+    const [showCropper, setShowCropper] = useState(false);
+    const [croppedAvatarBlob, setCroppedAvatarBlob] = useState<Blob | null>(null);
     const [settingsForm, setSettingsForm] = useState<SettingsForm>(buildInitialSettings('client'));
     const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -114,6 +125,8 @@ export default function ProfilePage() {
                 email: profile.email || '',
                 phone: profile.phone || '',
                 telegram: profile.telegram || '',
+                gender: profile.gender || '',
+                date_of_birth: profile.date_of_birth ? String(profile.date_of_birth).split('T')[0] : '',
             });
         }
     }, [profile]);
@@ -144,6 +157,8 @@ export default function ProfilePage() {
                 email: toOptionalTrimmedString(profileForm.email),
                 phone: toOptionalTrimmedString(profileForm.phone),
                 telegram: toOptionalTrimmedString(profileForm.telegram),
+                gender: profileForm.gender || null,
+                date_of_birth: profileForm.date_of_birth || null,
             });
             setMessage(`✅ ${t('profile.messages.profile_updated')}`);
             updateUser({ full_name: profileForm.full_name });
@@ -156,26 +171,41 @@ export default function ProfilePage() {
         }
     };
 
-    const handleUploadAvatar = async () => {
+    const handleSelectAvatar = () => {
         if (!selectedAvatarFile) {
             setMessage(`❌ ${t('profile.messages.select_avatar')}`);
             return;
         }
+        // Show cropper instead of uploading immediately
+        setShowCropper(true);
+    };
 
-        const formData = new FormData();
-        formData.append('avatar', selectedAvatarFile);
+    const handleCropComplete = async (croppedBlob: Blob) => {
+        setCroppedAvatarBlob(croppedBlob);
+        setShowCropper(false);
+        
+        // Upload the cropped avatar
         setUploadingAvatar(true);
         try {
+            const formData = new FormData();
+            formData.append('avatar', croppedBlob, 'avatar.png');
+            
             const { data } = await api.patch('/users/me/avatar', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             const nextProfile = data?.data || data;
+            const newAvatarUrl = nextProfile?.avatar_url || null;
+            
+            // Update both user context and local state
             updateUser({
                 full_name: nextProfile?.full_name || user?.full_name || '',
-                avatar_url: nextProfile?.avatar_url || null,
+                avatar_url: newAvatarUrl,
             });
             await mutate();
+            
+            // Clear states
             setSelectedAvatarFile(null);
+            setCroppedAvatarBlob(null);
             if (avatarInputRef.current) {
                 avatarInputRef.current.value = '';
             }
@@ -186,6 +216,11 @@ export default function ProfilePage() {
         } finally {
             setUploadingAvatar(false);
         }
+    };
+
+    const handleUploadAvatar = async () => {
+        // This function is now called after cropping
+        // The actual upload happens in handleCropComplete
     };
 
     const handleChangePassword = async () => {
@@ -286,9 +321,12 @@ export default function ProfilePage() {
                         )}
                         <div>
                             <h2 className="text-xl font-bold">{user.full_name}</h2>
-                            <span className="text-sm text-blue-500 uppercase tracking-widest bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20">
-                                {roleLabel}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="text-sm text-blue-500 uppercase tracking-widest bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20">
+                                    {roleLabel}
+                                </span>
+                                {profile?.phone && <PhoneBadge phone={profile.phone} />}
+                            </div>
                         </div>
                     </div>
 
@@ -313,12 +351,12 @@ export default function ProfilePage() {
                                 {selectedAvatarFile?.name || t('profile.no_file_selected')}
                             </p>
                             <button
-                                onClick={handleUploadAvatar}
+                                onClick={handleSelectAvatar}
                                 disabled={uploadingAvatar || !selectedAvatarFile}
                                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2.5 px-5 rounded-xl transition-colors flex items-center justify-center gap-2"
                             >
                                 {uploadingAvatar ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-                                {t('profile.upload_avatar')}
+                                Обрезать и загрузить
                             </button>
                         </div>
                     </div>
@@ -374,6 +412,34 @@ export default function ProfilePage() {
                                     onChange={(e) => setProfileForm({ ...profileForm, telegram: e.target.value })}
                                     className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder={t('profile.telegram_placeholder')}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-500 mb-2">
+                                    {t('profile.gender')}
+                                </label>
+                                <select
+                                    value={profileForm.gender}
+                                    onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value as 'male' | 'female' | 'other' })}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">{t('profile.gender_not_specified')}</option>
+                                    <option value="male">{t('profile.gender_male')}</option>
+                                    <option value="female">{t('profile.gender_female')}</option>
+                                    <option value="other">{t('profile.gender_other')}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-500 mb-2">
+                                    {t('profile.date_of_birth')}
+                                </label>
+                                <input
+                                    type="date"
+                                    value={profileForm.date_of_birth}
+                                    onChange={(e) => setProfileForm({ ...profileForm, date_of_birth: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
@@ -690,6 +756,21 @@ export default function ProfilePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Avatar Cropper Modal */}
+            {showCropper && selectedAvatarFile && (
+                <AvatarCropper
+                    image={selectedAvatarFile}
+                    onCropComplete={handleCropComplete}
+                    onClose={() => {
+                        setShowCropper(false);
+                        setSelectedAvatarFile(null);
+                        if (avatarInputRef.current) {
+                            avatarInputRef.current.value = '';
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

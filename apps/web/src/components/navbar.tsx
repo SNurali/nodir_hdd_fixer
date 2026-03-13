@@ -114,7 +114,7 @@ export default function Navbar({ onThemeChange, currentTheme }: NavbarProps) {
                 ? 'bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent' 
                 : 'bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent'
               }`}>
-                HDD FIXER
+                RECOVERY.UZ
               </span>
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] uppercase tracking-wider font-medium ${currentTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>

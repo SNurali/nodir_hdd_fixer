@@ -66,6 +66,12 @@ export class UserEntity {
     @Column({ type: 'timestamptz', nullable: true })
     password_reset_expires_at: Date | null;
 
+    @Column({ type: 'varchar', length: 10, nullable: true })
+    gender: 'male' | 'female' | 'other' | null;
+
+    @Column({ type: 'date', nullable: true })
+    date_of_birth: string | null;
+
     @Column({ type: 'uuid', nullable: true })
     created_by: string | null;
 

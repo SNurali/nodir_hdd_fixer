@@ -77,8 +77,10 @@ export default function LoginPage() {
       return () => clearTimeout(mountTimer);
     }
 
+    // Auto-redirect if already authenticated
     if (!authLoading && user) {
-      router.replace('/');
+      const dashboardPath = user.role === 'master' ? '/master/dashboard' : '/';
+      router.replace(dashboardPath);
     }
 
     return () => clearTimeout(mountTimer);
@@ -212,7 +214,7 @@ export default function LoginPage() {
                 ? 'bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent'
                 : 'bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent'
             }`}>
-              HDD FIXER
+              RECOVERY.UZ
             </h1>
             <p className={isDark ? 'text-slate-400 font-medium' : 'text-slate-600 font-medium'}>
               {t('login.service_subtitle')}

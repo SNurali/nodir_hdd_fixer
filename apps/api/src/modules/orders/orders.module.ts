@@ -16,10 +16,12 @@ import {
 } from '../../database/entities';
 
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
     imports: [
         NotificationsModule,
+        TelegramModule,
         TypeOrmModule.forFeature([
             OrderEntity,
             OrderDetailEntity,
