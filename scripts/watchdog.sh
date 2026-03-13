@@ -148,15 +148,18 @@ check_resources() {
     local mem_info=$(free | grep Mem)
     local mem_total=$(echo $mem_info | awk '{print $2}')
     local mem_used=$(echo $mem_info | awk '{print $3}')
-    local mem_percent=$((mem_used * 100 / mem_total))
     
-    if [ $mem_percent -gt 90 ]; then
-        log "${YELLOW}⚠️ Высокая загрузка RAM: ${mem_percent}%${NC}"
-        send_telegram "⚠️ <b>ВЫСОКАЯ НАГРУЗКА</b>
+    if [ $mem_total -gt 0 ]; then
+        local mem_percent=$((mem_used * 100 / mem_total))
+        
+        if [ $mem_percent -gt 90 ]; then
+            log "${YELLOW}⚠️ Высокая загрузка RAM: ${mem_percent}%${NC}"
+            send_telegram "⚠️ <b>ВЫСОКАЯ НАГРУЗКА</b>
 
 📊 <b>RAM:</b> ${mem_percent}%
 ⏰ <b>Время:</b> $(date '+%d.%m.%Y %H:%M')
 ⚠️ <b>Рекомендуется проверка!</b>"
+        fi
     fi
     
     # Disk
