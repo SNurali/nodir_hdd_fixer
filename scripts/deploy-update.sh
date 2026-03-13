@@ -31,6 +31,33 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
+# Telegram уведомления
+send_telegram_message() {
+    local message="$1"
+    local bot_token="${TELEGRAM_BOT_TOKEN:-}"
+    local chat_id="${TELEGRAM_CHAT_ID:-}"
+    
+    if [ -n "$bot_token" ] && [ -n "$chat_id" ]; then
+        curl -s -X POST "https://api.telegram.org/bot${bot_token}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"chat_id\": \"${chat_id}\",
+                \"text\": \"${message}\",
+                \"parse_mode\": \"HTML\"
+            }" > /dev/null
+    fi
+}
+
+# Получить версию Git
+get_git_version() {
+    git log -n 1 --format="%h" 2>/dev/null || echo "unknown"
+}
+
+# Получить сообщение коммита
+get_commit_message() {
+    git log -n 1 --format="%s" 2>/dev/null | sed 's/"/\\"/g' | sed "s/'/\\'/g" || echo "unknown"
+}
+
 # Проверка наличия Docker
 check_docker() {
     if ! command -v docker &> /dev/null; then
@@ -162,37 +189,74 @@ main() {
     echo "  RECOVERY.UZ - Обновление сервера"
     echo "============================================"
     echo ""
+
+    # Засекаем время начала
+    START_TIME=$(date +%s)
     
+    # Получаем информацию о версии
+    VERSION=$(get_git_version)
+    COMMIT_MSG=$(get_commit_message)
+
     # Проверка Docker
     check_docker
-    
+
+    # Отправляем уведомление о начале деплоя
+    send_telegram_message "🚀 <b>НАЧАЛО ДЕПЛОЯ</b>%0A%0A📦 <b>Версия:</b> ${VERSION}%0A📝 <b>Коммит:</b> ${COMMIT_MSG}%0A⏱ <b>Время:</b> $(date '+%d.%m.%Y %H:%M')%0A%0A⚙️ <b>Идёт обновление...</b>"
+
     # Обновление кода
-    update_code
-    
+    update_code || {
+        log_error "Ошибка при обновлении кода"
+        send_telegram_message "❌ <b>ОШИБКА ДЕПЛОЯ</b>%0A%0A📦 <b>Версия:</b> ${VERSION}%0A🔥 <b>Ошибка:</b> Не удалось обновить код из Git%0A%0A⚠️ <b>Требуется вмешательство!</b>"
+        exit 1
+    }
+
     # Остановка сервиса
-    stop_service
-    
+    stop_service || {
+        log_error "Ошибка при остановке сервиса"
+        send_telegram_message "❌ <b>ОШИБКА ДЕПЛОЯ</b>%0A%0A📦 <b>Версия:</b> ${VERSION}%0A🔥 <b>Ошибка:</b> Не удалось остановить сервис%0A%0A⚠️ <b>Требуется вмешательство!</b>"
+        exit 1
+    }
+
     # Очистка кэша
     clean_cache
-    
+
     # Установка зависимостей
-    install_deps
-    
+    install_deps || {
+        log_error "Ошибка при установке зависимостей"
+        send_telegram_message "❌ <b>ОШИБКА ДЕПЛОЯ</b>%0A%0A📦 <b>Версия:</b> ${VERSION}%0A🔥 <b>Ошибка:</b> Не удалось установить зависимости%0A%0A⚠️ <b>Требуется вмешательство!</b>"
+        exit 1
+    }
+
     # Сборка приложения
-    build_app
-    
+    build_app || {
+        log_error "Ошибка при сборке приложения"
+        send_telegram_message "❌ <b>ОШИБКА ДЕПЛОЯ</b>%0A%0A📦 <b>Версия:</b> ${VERSION}%0A🔥 <b>Ошибка:</b> Не удалось собрать приложение%0A%0A⚠️ <b>Требуется вмешательство!</b>"
+        exit 1
+    }
+
     # Запуск сервиса
-    start_service
-    
+    start_service || {
+        log_error "Ошибка при запуске сервиса"
+        send_telegram_message "❌ <b>ОШИБКА ДЕПЛОЯ</b>%0A%0A📦 <b>Версия:</b> ${VERSION}%0A🔥 <b>Ошибка:</b> Не удалось запустить сервис%0A%0A⚠️ <b>Требуется вмешательство!</b>"
+        exit 1
+    }
+
     # Проверка статуса
     check_status
-    
+
+    # Засекаем время окончания и считаем длительность
+    END_TIME=$(date +%s)
+    DURATION=$((END_TIME - START_TIME))
+
+    # Отправляем уведомление об успехе
+    send_telegram_message "✅ <b>ДЕПЛОЙ ЗАВЕРШЁН</b>%0A%0A📦 <b>Версия:</b> ${VERSION}%0A📝 <b>Коммит:</b> ${COMMIT_MSG}%0A⏱ <b>Время:</b> $(date '+%d.%m.%Y %H:%M')%0A⏲ <b>Длительность:</b> ${DURATION}с%0A%0A🎉 <b>Обновление успешно!</b>"
+
     echo ""
     log_success "============================================"
     log_success "  Обновление завершено успешно!"
     log_success "============================================"
     echo ""
-    
+
     # Предложение посмотреть логи
     read -p "Показать логи сервиса? (y/n) " -n 1 -r
     echo ""

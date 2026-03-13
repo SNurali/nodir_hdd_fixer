@@ -381,4 +381,73 @@ ${reason ? `📝 <b>Причина:</b> ${reason}` : ''}
         };
         return labels[status] || status;
     }
+
+    // ===== DEPLOY NOTIFICATIONS =====
+
+    async notifyDeployStart(version: string, commitMessage: string): Promise<void> {
+        if (!this.isConfigured()) return;
+
+        const text = `
+🚀 <b>НАЧАЛО ДЕПЛОЯ</b>
+
+📦 <b>Версия:</b> ${version}
+📝 <b>Коммит:</b> ${commitMessage.slice(0, 100)}${commitMessage.length > 100 ? '...' : ''}
+⏱ <b>Время:</b> ${new Date().toLocaleString('ru-RU')}
+
+⚙️ <b>Идёт обновление...</b>
+`.trim();
+
+        await this.sendMessage(text);
+    }
+
+    async notifyDeploySuccess(version: string, commitMessage: string, duration: number): Promise<void> {
+        if (!this.isConfigured()) return;
+
+        const text = `
+✅ <b>ДЕПЛОЙ ЗАВЕРШЁН</b>
+
+📦 <b>Версия:</b> ${version}
+📝 <b>Коммит:</b> ${commitMessage.slice(0, 100)}${commitMessage.length > 100 ? '...' : ''}
+⏱ <b>Время:</b> ${new Date().toLocaleString('ru-RU')}
+⏲ <b>Длительность:</b> ${duration}с
+
+🎉 <b>Обновление успешно!</b>
+`.trim();
+
+        await this.sendMessage(text);
+    }
+
+    async notifyDeployError(version: string, error: string): Promise<void> {
+        if (!this.isConfigured()) return;
+
+        const text = `
+❌ <b>ОШИБКА ДЕПЛОЯ</b>
+
+📦 <b>Версия:</b> ${version}
+⏱ <b>Время:</b> ${new Date().toLocaleString('ru-RU')}
+🔥 <b>Ошибка:</b> ${error.slice(0, 500)}${error.length > 500 ? '...' : ''}
+
+⚠️ <b>Требуется вмешательство!</b>
+`.trim();
+
+        await this.sendMessage(text);
+    }
+
+    // ===== ERROR NOTIFICATIONS =====
+
+    async notifyError(message: string, stack?: string, context?: string): Promise<void> {
+        if (!this.isConfigured()) return;
+
+        const text = `
+❌ <b>ОШИБКА СЕРВЕРА</b>
+
+📝 <b>Сообщение:</b> ${message.slice(0, 200)}${message.length > 200 ? '...' : ''}
+${context ? `📍 <b>Контекст:</b> ${context}` : ''}
+${stack ? `\n📋 <b>Стектрейс:</b>\n<code>${stack.slice(0, 1000)}${stack.length > 1000 ? '...' : ''}</code>` : ''}
+
+⚠️ <b>Требуется внимание!</b>
+`.trim();
+
+        await this.sendMessage(text);
+    }
 }
