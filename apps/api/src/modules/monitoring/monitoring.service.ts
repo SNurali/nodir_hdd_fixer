@@ -126,11 +126,14 @@ export class MonitoringService {
         const rootDisk = disk.find(d => d.mount === '/') || disk[0];
         const uploadsDisk = disk.find(d => d.mount.includes('uploads'));
 
+        // Get CPU info
+        const cpuInfo = await si.cpu();
+
         return {
             cpu: {
                 current: cpu.currentLoad,
-                cores: cpu.cores || 0,
-                model: (cpu as any).manufacturer + ' ' + (cpu as any).brand,
+                cores: cpuInfo.cores || 0,
+                model: cpuInfo.manufacturer + ' ' + cpuInfo.brand,
             },
             memory: {
                 used: Math.round(mem.active / 1024 / 1024),
