@@ -129,8 +129,8 @@ export class MonitoringService {
         return {
             cpu: {
                 current: cpu.currentLoad,
-                cores: cpu.cores,
-                model: cpu.manufacturer + ' ' + cpu.brand,
+                cores: cpu.cores || 0,
+                model: (cpu as any).manufacturer + ' ' + (cpu as any).brand,
             },
             memory: {
                 used: Math.round(mem.active / 1024 / 1024),
@@ -157,7 +157,7 @@ export class MonitoringService {
     async getUptime(): Promise<{
         api: number;
         apiFormatted: string;
-        system: number;
+        system: string;
         systemFormatted: string;
     }> {
         const apiUptime = process.uptime();
