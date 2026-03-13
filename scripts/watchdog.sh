@@ -59,11 +59,21 @@ check_api() {
 
 # Проверка PostgreSQL
 check_postgres() {
+    # Check if running in Docker
+    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "postgres"; then
+        return 0  # Docker container is running
+    fi
+    # Otherwise check directly
     pg_isready -h localhost -p 5436 -t 2 > /dev/null 2>&1
 }
 
 # Проверка Redis
 check_redis() {
+    # Check if running in Docker
+    if docker ps --format "{{.Names}}" 2>/dev/null | grep -q "redis"; then
+        return 0  # Docker container is running
+    fi
+    # Otherwise check directly
     redis-cli -p 6380 ping > /dev/null 2>&1
 }
 
