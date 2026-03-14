@@ -3,12 +3,12 @@ import { resolve, isAbsolute, join } from 'path';
 
 // Serverless detection: Vercel, AWS Lambda, etc.
 // NOTE: NODE_ENV=production does NOT mean serverless - Docker containers have writable filesystem
-const isServerlessEnvironment = (): boolean => {
+export function isServerless(): boolean {
     // Check for explicit serverless platforms
     if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.CF_PAGES) {
         return true;
     }
-    
+
     // Check for serverless working directories
     try {
         const cwd = process.cwd();
@@ -16,12 +16,9 @@ const isServerlessEnvironment = (): boolean => {
             return true;
         }
     } catch (e) {}
-    
-    return false;
-};
-const isServerless = isServerlessEnvironment();
 
-export { isServerless };
+    return false;
+}
 
 // Resolve paths from the repository root so uploads do not depend on process.cwd().
 const API_ROOT_DIR = resolve(__dirname, '..', '..', '..');
@@ -56,7 +53,7 @@ export function toUploadsFilePath(uploadUrl: string | null | undefined): string 
 
 export function migrateLegacyUploads(): void {
     // Skip migration in serverless environments (read-only filesystem)
-    if (isServerless) {
+    if (isServerless()) {
         return;
     }
 
