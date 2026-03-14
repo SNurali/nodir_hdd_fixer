@@ -9,16 +9,16 @@
 
 ### Последний коммит на GitHub
 ```
-dfb6d43 fix: correct NEXT_PUBLIC_API_URL for production Docker build
+e171050 fix: avatar upload not displaying on production
 ```
 
 ---
 
-## ⚠️ ВАЖНОЕ ИСПРАВЛЕНИЕ
+## ⚠️ ИСПРАВЛЕНИЯ В ЭТОЙ ВЕРСИИ
 
-Проблема: Frontend не мог обращаться к API из-за неправильного `NEXT_PUBLIC_API_URL=localhost:3004/v1`.
-
-**Исправлено:** Теперь по умолчанию используется `http://hddfix.uz:3004/v1`.
+1. **NEXT_PUBLIC_API_URL** — исправлен с `localhost:3004` на `hddfix.uz:3004`
+2. **Avatar upload** — добавлен volume `uploads_prod` для сохранения аватаров
+3. **API URL** — исправлено удаление порта для production доменов
 
 ---
 
@@ -54,7 +54,7 @@ curl http://localhost:3004/v1/health
 curl http://localhost:3003
 
 # Проверить что API доступен из браузера
-curl http://hddfix.uz:3003/v1/health  # Должно вернуть 200, не 500!
+curl http://hddfix.uz:3004/v1/health  # Должно вернуть {"status":"ok"...}
 ```
 
 ### 6. Проверить логи
@@ -92,6 +92,9 @@ CORS_ORIGINS=http://localhost:3003,http://hddfix.uz:3003
 WEB_PORT=3003
 NEXT_PUBLIC_API_URL=http://hddfix.uz:3004/v1
 
+# Uploads
+UPLOADS_DIR=/app/uploads
+
 # Telegram
 TELEGRAM_BOT_TOKEN=8759863943:AAHncy4_UyPHiidyTTLp5e2F9bFJCRTYqfI
 TELEGRAM_CHAT_ID=-5240393504
@@ -113,6 +116,16 @@ NODE_ENV=production
 
 ---
 
+## Volumes (для сохранения данных)
+
+| Volume | Назначение |
+|--------|------------|
+| pgdata_prod | База данных PostgreSQL |
+| redisdata_prod | Данные Redis |
+| uploads_prod | Загруженные файлы (аватары) |
+
+---
+
 ## Быстрая проверка
 
 ```bash
@@ -130,6 +143,9 @@ docker exec hdd_fixer_postgres_prod psql -U hdd_fixer -d hdd_fixer_db -c "SELECT
 
 # Проверить Redis
 docker exec hdd_fixer_redis_prod redis-cli ping
+
+# Проверить uploads volume
+docker exec hdd_fixer_api_prod ls -la /app/uploads
 ```
 
 ---
