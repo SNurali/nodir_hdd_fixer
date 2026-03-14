@@ -116,6 +116,11 @@ export class OrdersService {
             client.full_name = guestName;
             shouldUpdateClient = true;
         }
+        // Sync phone if provided and different
+        if (dto.guest_phone && dto.guest_phone !== client.phone) {
+            client.phone = dto.guest_phone;
+            shouldUpdateClient = true;
+        }
         if (dto.guest_telegram !== undefined) {
             const normalizedTelegram = guestTelegram || null;
             if ((client.telegram || null) !== normalizedTelegram) {

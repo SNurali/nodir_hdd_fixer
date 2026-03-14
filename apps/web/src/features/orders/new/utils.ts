@@ -60,7 +60,23 @@ export function buildOrderPayload(params: {
     })),
   };
 
-  if (!params.isClientRole) {
+  // For client role: backend auto-resolves client_id from JWT
+  // But we still send contact info so backend can update client record if needed
+  if (params.isClientRole) {
+    // Send contact info for profile sync (backend will update client record)
+    const trimmedName = params.fullName.trim();
+    if (trimmedName.length >= 2) {
+      payload.guest_name = trimmedName;
+    }
+    if (params.phone && /^\+[1-9]\d{1,14}$/.test(params.phone)) {
+      payload.guest_phone = params.phone;
+    }
+    const trimmedTelegram = normalizeTelegram(params.telegram || '');
+    if (trimmedTelegram) {
+      payload.guest_telegram = trimmedTelegram;
+    }
+  } else {
+    // Non-client role (admin/operator): create guest client
     const trimmedName = params.fullName.trim();
     const trimmedTelegram = normalizeTelegram(params.telegram || '');
 
