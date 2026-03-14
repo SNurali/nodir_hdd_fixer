@@ -1,37 +1,24 @@
 # 🚀 HDD Fixer - Deployment Guide
 
-## ✅ Setup Complete
+## ✅ Production Deployment (Docker Compose)
 
-### Server Information
-- **Public IP:** `195.158.24.137`
-- **API Port:** 3004
-- **Nginx Port:** 80
+### Ports
+- **API:** 3004
+- **Web:** 3003
 
 ---
 
-## 📍 Access URLs
-
-### Local (on server):
+## 📍 Access URLs (example)
 ```
-http://localhost/v1/health
-http://localhost/api/docs
-http://localhost/
-```
-
-### External (from internet):
-```
-http://195.158.24.137/v1/health
-http://195.158.24.137/api/docs
-http://195.158.24.137/
+https://hddfix.uz/v1/health
+https://hddfix.uz/api/docs
+https://hddfix.uz/
 ```
 
 ---
 
-## 🔑 Default Credentials
-```
-Email: admin@hdd-fixer.uz
-Password: admin123
-```
+## 🔑 Initial Admin (via seed)
+Seed creates default users. Change passwords after first login.
 
 ---
 
@@ -39,35 +26,16 @@ Password: admin123
 
 ### Start/Restart Services:
 ```bash
-# API (systemd)
-sudo systemctl start hdd-fixer-api
-sudo systemctl stop hdd-fixer-api
-sudo systemctl restart hdd-fixer-api
-sudo systemctl status hdd-fixer-api
-
-# Nginx
-sudo systemctl start nginx
-sudo systemctl restart nginx
-sudo systemctl status nginx
-
-# Docker (PostgreSQL, Redis)
-cd /home/yoyo/nodir_hdd_fixer
-docker-compose up -d
-docker-compose ps
-docker-compose down
+# Docker Compose (prod)
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml down
 ```
 
 ### Logs:
 ```bash
-# API logs
-journalctl -u hdd-fixer-api -f
-
-# Nginx logs
-tail -f /var/log/nginx/hdd-fixer-access.log
-tail -f /var/log/nginx/hdd-fixer-error.log
-
 # Docker logs
-docker-compose logs -f
+docker compose -f docker-compose.prod.yml logs -f
 ```
 
 ### Quick Start Script:
@@ -116,7 +84,8 @@ Port 443/tcp - ALLOW (HTTPS)
 
 ### Environment:
 ```
-/home/yoyo/nodir_hdd_fixer/.env
+/path/to/nodir_hdd_fixer/.env.production
+/path/to/nodir_hdd_fixer/.env.prod   # generated for Docker Compose
 ```
 
 ---
@@ -190,14 +159,14 @@ To use a custom domain:
 ```bash
 cd /home/yoyo/nodir_hdd_fixer
 
-# Pull latest changes (if using git)
+# Pull latest changes
 git pull
 
-# Install dependencies
-npm install
+# Prepare .env.prod (generates JWT secrets)
+./scripts/prepare-prod-env.sh
 
-# Rebuild API
-npm run build:api
+# Deploy
+docker compose -f docker-compose.prod.yml up -d --build
 
 # Restart API
 sudo systemctl restart hdd-fixer-api

@@ -73,50 +73,23 @@ npm run docker:dev:down
 
 ## Деплой на продакшен
 
-### Вариант 1: Автоматический деплой (рекомендуется)
-
-```bash
-# 1. Обновить код
-git pull
-
-# 2. Собрать проект
-npm run build
-
-# 3. Запустить деплой (миграции + перезапуск сервисов)
-npm run start:prod
-```
-
-### Вариант 2: Ручной деплой
+### Вариант 1: Docker Compose (рекомендуется)
 
 ```bash
 # 1. Обновить код
 git pull origin main
 
-# 2. Установить зависимости
-npm install --production
+# 2. Подготовить .env.prod (на основе .env.production)
+./scripts/prepare-prod-env.sh
 
-# 3. Собрать проект
-npm run build
+# 3. Запустить Docker контейнеры (prod)
+docker compose -f docker-compose.prod.yml up -d --build
 
-# 4. Применить миграции БД
-npm run db:migrate
-
-# 5. Запустить Docker контейнеры (продакшен порты)
-docker compose -f docker-compose.prod.yml up -d
-
-# 6. Проверить логи
+# 4. Проверить логи
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
-### Вариант 3: Скрипт deploy.sh
-
-```bash
-# Запустить скрипт деплоя
-./scripts/deploy.sh
-
-# Или через npm
-npm run deploy
-```
+Миграции запускаются автоматически при старте API контейнера (см. `apps/api/Dockerfile`).
 
 ---
 
@@ -153,11 +126,14 @@ docker compose version
 # Перейти в директорию проекта
 cd /path/to/nodir_hdd_fixer
 
-# Создать production .env файл
+# Создать .env.production (если его ещё нет)
 cp .env.production.example .env.production
 
 # Отредактировать с реальными значениями
 nano .env.production
+
+# Сгенерировать .env.prod для Docker Compose
+./scripts/prepare-prod-env.sh
 ```
 
 ### 4. Настройка .env.production
@@ -185,7 +161,8 @@ CORS_ORIGINS=http://localhost:3003,https://your-domain.com
 
 # Web
 WEB_PORT=3003
-NEXT_PUBLIC_API_URL=https://your-domain.com/v1
+# Оставьте /v1 если nginx проксирует /v1 -> localhost:3004
+NEXT_PUBLIC_API_URL=/v1
 
 # Environment
 NODE_ENV=production
@@ -198,6 +175,16 @@ NODE_ENV=production
 openssl rand -base64 32
 # или
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### 6. Первичный seed (админ + справочники)
+
+Если база пустая, выполните seed внутри API контейнера:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T api sh -c \\
+  \"DB_HOST=postgres DB_PORT=5432 DB_USERNAME=hdd_fixer DB_PASSWORD=YOUR_DB_PASSWORD DB_DATABASE=hdd_fixer_db \\
+  node apps/api/dist/database/seeds/run-seed.js\"
 ```
 
 ---

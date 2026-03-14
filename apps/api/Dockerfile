@@ -31,4 +31,5 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
 EXPOSE 3004
 
-CMD ["node", "apps/api/dist/main.js"]
+# Run migrations on startup to ensure schema exists, then start API
+CMD ["sh", "-c", "node ./node_modules/typeorm/cli.js migration:run -d ./apps/api/dist/database/data-source.js && node apps/api/dist/main.js"]
