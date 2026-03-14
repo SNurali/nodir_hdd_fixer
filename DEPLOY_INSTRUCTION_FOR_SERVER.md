@@ -9,7 +9,7 @@
 
 ### Последний коммит на GitHub
 ```
-168dddd fix: comprehensive DTO validation and frontend payload fixes
+3bba21b fix: client info empty in order - sync contact data on order creation
 ```
 
 ---
@@ -23,6 +23,7 @@
 5. **Static uploads** — исправлена раздача статических файлов в Docker
 6. **DTO Validation** — исправлена валидация nullable полей (phone, email, telegram)
 7. **Frontend payloads** — добавлена валидация E.164 телефона перед отправкой
+8. **Client sync** — исправлены пустые ФИО/телефон в заказе (синхронизация client record)
 
 ---
 
