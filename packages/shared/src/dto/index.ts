@@ -2,15 +2,27 @@ import { z } from 'zod';
 import { LANGUAGES } from '../constants/index';
 import { OrderStatus, PaymentType, Currency, Language } from '../enums/index';
 
+// ===== Common Schemas =====
+// Phone: E.164 format or null (for updates)
+const PhoneSchema = z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone must be in international E.164 format');
+const PhoneNullableSchema = z.union([
+    PhoneSchema,
+    z.null(),
+    z.undefined()
+]);
+
+// Gender enum
+const GenderSchema = z.enum(['male', 'female', 'other']);
+
 // ===== Auth =====
 export const RegisterDto = z.object({
     full_name: z.string().min(2).max(255),
-    phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone must be in international E.164 format'),
+    phone: PhoneSchema,
     email: z.string().email().optional(),
     telegram: z.string().max(100).optional(),
     password: z.string().min(6).max(100),
     preferred_language: z.nativeEnum(Language).default(Language.RU),
-    gender: z.enum(['male', 'female', 'other']).optional(),
+    gender: GenderSchema.optional(),
     date_of_birth: z.string().optional(),
 });
 
@@ -31,11 +43,11 @@ export const ResetPasswordDto = z.object({
 // ===== Client =====
 export const CreateClientDto = z.object({
     full_name: z.string().min(2).max(255),
-    phone: z.string().regex(/^\+[1-9]\d{1,14}$/),
+    phone: PhoneSchema,
     telegram: z.string().max(100).optional(),
     email: z.string().email().optional(),
     preferred_language: z.nativeEnum(Language).default(Language.RU),
-    gender: z.enum(['male', 'female', 'other']).optional(),
+    gender: GenderSchema.optional(),
     date_of_birth: z.string().optional(),
 });
 
@@ -76,7 +88,7 @@ export const CreateOrderDto = z.object({
     details: z.array(CreateOrderDetailDto).min(1),
     // Guest checkout fields
     guest_name: z.string().min(2).max(255).optional(),
-    guest_phone: z.string().regex(/^\+[1-9]\d{1,14}$/).optional(),
+    guest_phone: PhoneSchema.optional(),
     guest_telegram: z.string().max(100).optional(),
     guest_email: z.string().email().optional(),
 });
@@ -144,23 +156,24 @@ export const CompleteDetailDto = z.object({
 export const CreateUserDto = z.object({
     full_name: z.string().min(2).max(255),
     email: z.string().email().optional(),
-    phone: z.string().regex(/^\+[1-9]\d{1,14}$/).optional(),
+    phone: PhoneSchema.optional(),
     telegram: z.string().max(100).optional(),
     password: z.string().min(6).max(100),
     role_id: z.string().uuid(),
     preferred_language: z.enum(LANGUAGES).default('ru'),
-    gender: z.enum(['male', 'female', 'other']).optional(),
+    gender: GenderSchema.optional(),
     date_of_birth: z.string().optional(),
 });
 
+// UpdateUserDto: all fields are optional, phone/email/gender/date_of_birth can be set to null
 export const UpdateUserDto = z.object({
     full_name: z.string().min(2).max(255).optional(),
-    email: z.string().email().optional().nullable(),
-    phone: z.string().regex(/^\+[1-9]\d{1,14}$/).optional().nullable(),
-    telegram: z.string().max(100).optional().nullable(),
+    email: z.union([z.string().email(), z.null()]).optional(),
+    phone: PhoneNullableSchema.optional(),
+    telegram: z.union([z.string().max(100), z.null()]).optional(),
     preferred_language: z.enum(LANGUAGES).optional(),
-    gender: z.enum(['male', 'female', 'other']).optional().nullable(),
-    date_of_birth: z.string().optional().nullable(),
+    gender: z.union([GenderSchema, z.null()]).optional(),
+    date_of_birth: z.union([z.string(), z.null()]).optional(),
 });
 
 export const ChangeUserRoleDto = z.object({

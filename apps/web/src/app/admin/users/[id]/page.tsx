@@ -65,12 +65,29 @@ export default function AdminUserEditPage() {
     setSuccess(null);
 
     try {
-      await api.patch(`/users/${userId}`, {
+      // Build payload with proper validation
+      const payload: Record<string, string | null | undefined> = {
         full_name: formData.full_name.trim(),
-        email: toOptionalTrimmedString(formData.email),
-        phone: toOptionalTrimmedString(formData.phone),
         preferred_language: formData.preferred_language,
-      });
+      };
+      
+      // Email: optional
+      const email = toOptionalTrimmedString(formData.email);
+      if (email) {
+        payload.email = email;
+      } else if (formData.email === '') {
+        payload.email = null;
+      }
+      
+      // Phone: only send if valid E.164 format
+      const phone = formData.phone?.trim();
+      if (phone && /^\+[1-9]\d{1,14}$/.test(phone)) {
+        payload.phone = phone;
+      } else if (phone === '') {
+        payload.phone = null;
+      }
+      
+      await api.patch(`/users/${userId}`, payload);
       setSuccess(t('admin_user_detail.user_updated_success'));
       mutate();
     } catch (err: any) {

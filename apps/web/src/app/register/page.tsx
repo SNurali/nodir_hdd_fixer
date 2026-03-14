@@ -74,14 +74,20 @@ export default function RegisterPage() {
       return;
     }
 
+    // Validate phone format
+    if (!/^\+[1-9]\d{1,14}$/.test(formData.phone)) {
+      setError('Телефон должен быть в международном формате (например, +998901234567)');
+      return;
+    }
+
     setLoading(true);
 
     try {
       await api.post('/auth/register', {
-        full_name: formData.full_name,
+        full_name: formData.full_name.trim(),
         phone: formData.phone,
-        email: formData.email || undefined,
-        telegram: formData.telegram || undefined,
+        email: formData.email?.trim() || undefined,
+        telegram: formData.telegram?.trim() || undefined,
         password: formData.password,
         preferred_language: formData.preferred_language
       });

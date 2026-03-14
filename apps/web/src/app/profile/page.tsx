@@ -152,14 +152,50 @@ export default function ProfilePage() {
     const handleSaveProfile = async () => {
         setSavingProfile(true);
         try {
-            await api.patch('/users/me', {
+            // Build payload with proper validation
+            const payload: Record<string, string | null | undefined> = {
                 full_name: profileForm.full_name.trim(),
-                email: toOptionalTrimmedString(profileForm.email),
-                phone: toOptionalTrimmedString(profileForm.phone),
-                telegram: toOptionalTrimmedString(profileForm.telegram),
-                gender: profileForm.gender || null,
-                date_of_birth: profileForm.date_of_birth || null,
-            });
+            };
+            
+            // Email: only send if valid or explicitly null
+            const email = toOptionalTrimmedString(profileForm.email);
+            if (email) {
+                payload.email = email;
+            } else if (profileForm.email === '') {
+                payload.email = null;
+            }
+            
+            // Phone: only send if valid E.164 format
+            const phone = toOptionalTrimmedString(profileForm.phone);
+            if (phone && /^\+[1-9]\d{1,14}$/.test(phone)) {
+                payload.phone = phone;
+            } else if (profileForm.phone === '') {
+                payload.phone = null;
+            }
+            
+            // Telegram: optional string
+            const telegram = toOptionalTrimmedString(profileForm.telegram);
+            if (telegram) {
+                payload.telegram = telegram;
+            } else if (profileForm.telegram === '') {
+                payload.telegram = null;
+            }
+            
+            // Gender: only send if has value or explicitly clearing
+            if (profileForm.gender) {
+                payload.gender = profileForm.gender;
+            } else {
+                payload.gender = null;
+            }
+            
+            // Date of birth: only send if has value or explicitly clearing
+            if (profileForm.date_of_birth) {
+                payload.date_of_birth = profileForm.date_of_birth;
+            } else {
+                payload.date_of_birth = null;
+            }
+            
+            await api.patch('/users/me', payload);
             setMessage(`✅ ${t('profile.messages.profile_updated')}`);
             updateUser({ full_name: profileForm.full_name });
             mutate();

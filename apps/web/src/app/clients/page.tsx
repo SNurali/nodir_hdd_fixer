@@ -53,6 +53,13 @@ export default function ClientsPage() {
     const handleAddClient = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        
+        // Validate phone format
+        if (!/^\+[1-9]\d{1,14}$/.test(newClient.phone.trim())) {
+            setError('Телефон должен быть в международном формате (например, +998901234567)');
+            return;
+        }
+        
         setLoading(true);
         try {
             await api.post('/clients', {
@@ -88,13 +95,31 @@ export default function ClientsPage() {
     const handleSaveEdit = async (clientId: string) => {
         setLoading(true);
         try {
-            await api.patch(`/clients/${clientId}`, {
+            // Build payload with proper validation
+            const payload: Record<string, string | undefined> = {
                 full_name: editForm.full_name.trim(),
-                phone: toOptionalTrimmedString(editForm.phone),
-                email: toOptionalTrimmedString(editForm.email),
-                telegram: toOptionalTrimmedString(editForm.telegram),
                 preferred_language: editForm.preferred_language,
-            });
+            };
+            
+            // Phone: only send if valid E.164 format
+            const phone = editForm.phone.trim();
+            if (phone && /^\+[1-9]\d{1,14}$/.test(phone)) {
+                payload.phone = phone;
+            }
+            
+            // Email: optional
+            const email = toOptionalTrimmedString(editForm.email);
+            if (email) {
+                payload.email = email;
+            }
+            
+            // Telegram: optional
+            const telegram = toOptionalTrimmedString(editForm.telegram);
+            if (telegram) {
+                payload.telegram = telegram;
+            }
+            
+            await api.patch(`/clients/${clientId}`, payload);
             setEditingClient(null);
             mutate();
             setMessage('✅ Клиент обновлён');

@@ -39,12 +39,20 @@ export default function NewUserPage() {
             setMessage(`❌ ${t('admin_new_user.required_fields')}`);
             return;
         }
+        
+        // Validate phone format if provided
+        const phone = form.phone?.trim();
+        if (phone && !/^\+[1-9]\d{1,14}$/.test(phone)) {
+            setMessage(`❌ Телефон должен быть в международном формате (например, +998901234567)`);
+            return;
+        }
+        
         setLoading(true);
         try {
             await api.post('/users', {
                 full_name: form.full_name.trim(),
                 email: toOptionalTrimmedString(form.email),
-                phone: toOptionalTrimmedString(form.phone),
+                phone: phone || undefined,
                 password: form.password,
                 role_id: form.role_id,
                 preferred_language: form.preferred_language,
