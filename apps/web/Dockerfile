@@ -4,6 +4,10 @@ FROM node:20-alpine AS builder
 ARG NEXT_PUBLIC_API_URL=http://hddfix.uz:3004/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Server-side API URL for SSR (Docker internal network)
+ARG API_INTERNAL_URL=http://api:3004/v1
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
+
 WORKDIR /app
 
 # Install dependencies
