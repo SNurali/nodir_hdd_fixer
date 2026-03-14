@@ -9,7 +9,7 @@
 
 ### Последний коммит на GitHub
 ```
-3bba21b fix: client info empty in order - sync contact data on order creation
+2e5cf68 fix: add migration to sync empty client data from users table
 ```
 
 ---
@@ -24,6 +24,7 @@
 6. **DTO Validation** — исправлена валидация nullable полей (phone, email, telegram)
 7. **Frontend payloads** — добавлена валидация E.164 телефона перед отправкой
 8. **Client sync** — исправлены пустые ФИО/телефон в заказе (синхронизация client record)
+9. **Migration** — добавлена миграция для исправления существующих пустых данных клиентов
 
 ---
 
@@ -50,7 +51,12 @@ git reset --hard origin/main
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### 5. Проверить здоровье сервисов
+### 5. Применить миграцию для исправления пустых данных клиентов
+```bash
+docker compose -f docker-compose.prod.yml exec api sh -c "node ./node_modules/typeorm/cli.js migration:run -d ./apps/api/dist/database/data-source.js"
+```
+
+### 6. Проверить здоровье сервисов
 ```bash
 # API Health
 curl http://localhost:3004/v1/health
