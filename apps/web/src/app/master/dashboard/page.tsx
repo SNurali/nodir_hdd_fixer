@@ -113,10 +113,13 @@ export default function MasterDashboardPage() {
   const handleSetStatus = async (orderId: string, detailId: string) => {
     setLoading('status');
     try {
-      await api.post(`/orders/${orderId}/details/${detailId}/complete`, {
-        is_completed: statusForm.status === 'ready_for_pickup' ? 1 : statusForm.status === 'unrepairable' ? 2 : 0,
-        comments: statusForm.comment
-      });
+      const payload: { is_completed: number; comments?: string } = {
+        is_completed: statusForm.status === 'ready_for_pickup' ? 1 : statusForm.status === 'unrepairable' ? 2 : 1,
+      };
+      if (statusForm.comment) {
+        payload.comments = statusForm.comment;
+      }
+      await api.post(`/orders/${orderId}/details/${detailId}/complete`, payload);
       setStatusForm({ detailId: '', status: '', comment: '' });
       mutate();
       alert(`✅ ${t('master_dashboard.status_updated_success')}`);
