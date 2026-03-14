@@ -300,15 +300,26 @@ export default function NewOrderPage() {
 
     if (isClientRole && hasContactDiff && contactUpdateDecision === 'update') {
       try {
-        await api.patch('/users/me', {
+        const updatePayload: Record<string, string | undefined> = {
           full_name: formData.full_name.trim(),
-          phone: phone || undefined,
-          telegram: normalizeTelegram(formData.telegram || '') || undefined,
-        });
+        };
+        
+        // Only include phone if it's a valid E.164 format
+        if (phone && E164_PHONE_REGEX.test(phone)) {
+          updatePayload.phone = phone;
+        }
+        
+        // Only include telegram if it's not empty
+        const normalizedTelegram = normalizeTelegram(formData.telegram || '');
+        if (normalizedTelegram) {
+          updatePayload.telegram = normalizedTelegram;
+        }
+        
+        await api.patch('/users/me', updatePayload);
         setProfileSnapshot({
           full_name: formData.full_name,
           phone,
-          telegram: normalizeTelegram(formData.telegram || ''),
+          telegram: normalizedTelegram,
           preferred_language: formData.preferred_language || 'ru',
         });
       } catch (err: any) {
