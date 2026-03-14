@@ -51,9 +51,12 @@ services:
       DB_DATABASE: ${POSTGRES_DB:-hdd_fixer_db}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      UPLOADS_DIR: /app/uploads
       # Add other necessary prod env variables below, or load natively from .env block
     env_file:
       - .env.prod
+    volumes:
+      - uploads_prod:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,3 +84,4 @@ services:
 volumes:
   pgdata_prod:
   redisdata_prod:
+  uploads_prod:

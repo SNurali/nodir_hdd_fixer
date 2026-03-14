@@ -27,10 +27,8 @@ function resolveRuntimeUrl(rawUrl: string): string {
       parsedUrl.hostname = browserHost;
     }
 
-    // Always use port 80 (no explicit port) for production domains
-    if (!browserIsLocal && !apiHostIsLocal) {
-      parsedUrl.port = '';
-    }
+    // Keep the port from the configured URL - don't strip it for production
+    // The URL should be explicitly configured with the correct port (e.g., http://hddfix.uz:3004/v1)
 
     return trimTrailingSlash(parsedUrl.toString());
   } catch {
