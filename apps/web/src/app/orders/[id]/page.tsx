@@ -396,7 +396,7 @@ export default function OrderDetailPage() {
     if (!confirm('Отметить работу как выполненную?')) return;
     setCompletingDetail(detailId);
     try {
-      await api.post(`/orders/${orderId}/details/${detailId}/complete`, { is_completed: 1, comments: '' });
+      await api.post(`/orders/${orderId}/details/${detailId}/complete`, { is_completed: 1 });
       setMessage('✅ Работа отмечена как выполненная!');
       mutate();
       setTimeout(() => setMessage(''), 3000);

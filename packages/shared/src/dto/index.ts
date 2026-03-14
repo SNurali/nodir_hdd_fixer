@@ -149,7 +149,7 @@ export const AssignMasterDto = z.object({
 // ===== Complete Detail =====
 export const CompleteDetailDto = z.object({
     is_completed: z.number().int().min(1).max(2),
-    comments: z.string().optional(),
+    comments: z.string().optional().nullable(),
 });
 
 // ===== User =====
