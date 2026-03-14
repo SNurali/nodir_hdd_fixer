@@ -9,7 +9,7 @@
 
 ### Последний коммит на GitHub
 ```
-415beb5 fix: SSR auth check fails on production - add API_INTERNAL_URL
+c6d7462 fix: static uploads not served in production Docker
 ```
 
 ---
@@ -19,7 +19,8 @@
 1. **NEXT_PUBLIC_API_URL** — исправлен с `localhost:3004` на `hddfix.uz:3004`
 2. **Avatar upload** — добавлен volume `uploads_prod` для сохранения аватаров
 3. **API URL** — исправлено удаление порта для production доменов
-4. **SSR Auth** — добавлен `API_INTERNAL_URL` для серверных запросов в Docker (исправляет кнопку "Новый заказ")
+4. **SSR Auth** — добавлен `API_INTERNAL_URL` для серверных запросов в Docker
+5. **Static uploads** — исправлена раздача статических файлов в Docker (аватары возвращали 404)
 
 ---
 
