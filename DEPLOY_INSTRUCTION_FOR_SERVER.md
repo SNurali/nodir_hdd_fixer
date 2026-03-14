@@ -7,15 +7,18 @@
 **Сайт:** http://hddfix.uz:3003/
 **API:** http://hddfix.uz:3004/
 
-### Текущее состояние на сервере
-- ✅ Frontend работает: http://hddfix.uz:3003/
-- ✅ Backend API работает: http://hddfix.uz:3004/v1/health
-- ✅ Swagger доступен: http://hddfix.uz:3004/api/docs
-
 ### Последний коммит на GitHub
 ```
-e6703ca feat: add migration for comments translations in order_lifecycle
+dfb6d43 fix: correct NEXT_PUBLIC_API_URL for production Docker build
 ```
+
+---
+
+## ⚠️ ВАЖНОЕ ИСПРАВЛЕНИЕ
+
+Проблема: Frontend не мог обращаться к API из-за неправильного `NEXT_PUBLIC_API_URL=localhost:3004/v1`.
+
+**Исправлено:** Теперь по умолчанию используется `http://hddfix.uz:3004/v1`.
 
 ---
 
@@ -26,7 +29,7 @@ e6703ca feat: add migration for comments translations in order_lifecycle
 cd /path/to/nodir_hdd_fixer
 ```
 
-### 2. Остановить текущие контейнеры (если используются)
+### 2. Остановить текущие контейнеры
 ```bash
 docker compose -f docker-compose.prod.yml down
 ```
@@ -37,29 +40,12 @@ git fetch origin
 git reset --hard origin/main
 ```
 
-### 4. Установить зависимости и собрать
-```bash
-npm ci
-npm run build
-```
-
-### 5. Применить новую миграцию (ВАЖНО!)
-```bash
-# Если используете Docker:
-docker compose -f docker-compose.prod.yml up -d postgres redis
-sleep 5
-npm run db:migrate
-
-# Или внутри контейнера API:
-docker compose -f docker-compose.prod.yml exec api sh -c "node ./node_modules/typeorm/cli.js migration:run -d ./apps/api/dist/database/data-source.js"
-```
-
-### 6. Запустить контейнеры
+### 4. Пересобрать и запустить (ВАЖНО: --build!)
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### 7. Проверить здоровье сервисов
+### 5. Проверить здоровье сервисов
 ```bash
 # API Health
 curl http://localhost:3004/v1/health
@@ -67,7 +53,12 @@ curl http://localhost:3004/v1/health
 # Frontend
 curl http://localhost:3003
 
-# Логи
+# Проверить что API доступен из браузера
+curl http://hddfix.uz:3003/v1/health  # Должно вернуть 200, не 500!
+```
+
+### 6. Проверить логи
+```bash
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
@@ -97,7 +88,7 @@ JWT_REFRESH_SECRET=your-32-char-refresh-secret
 APP_PORT=3004
 CORS_ORIGINS=http://localhost:3003,http://hddfix.uz:3003
 
-# Web
+# Web - ВАЖНО: URL должен быть доступен из браузера!
 WEB_PORT=3003
 NEXT_PUBLIC_API_URL=http://hddfix.uz:3004/v1
 
@@ -154,7 +145,6 @@ git log --oneline -5  # найти нужный коммит
 git reset --hard <commit_hash>
 
 # Пересобрать и запустить
-npm ci && npm run build
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
