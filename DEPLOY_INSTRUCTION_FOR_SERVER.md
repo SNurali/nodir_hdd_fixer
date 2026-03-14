@@ -9,7 +9,7 @@
 
 ### Последний коммит на GitHub
 ```
-c6d7462 fix: static uploads not served in production Docker
+168dddd fix: comprehensive DTO validation and frontend payload fixes
 ```
 
 ---
@@ -20,7 +20,9 @@ c6d7462 fix: static uploads not served in production Docker
 2. **Avatar upload** — добавлен volume `uploads_prod` для сохранения аватаров
 3. **API URL** — исправлено удаление порта для production доменов
 4. **SSR Auth** — добавлен `API_INTERNAL_URL` для серверных запросов в Docker
-5. **Static uploads** — исправлена раздача статических файлов в Docker (аватары возвращали 404)
+5. **Static uploads** — исправлена раздача статических файлов в Docker
+6. **DTO Validation** — исправлена валидация nullable полей (phone, email, telegram)
+7. **Frontend payloads** — добавлена валидация E.164 телефона перед отправкой
 
 ---
 
