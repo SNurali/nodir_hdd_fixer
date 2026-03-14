@@ -9,7 +9,7 @@
 
 ### Последний коммит на GitHub
 ```
-e171050 fix: avatar upload not displaying on production
+415beb5 fix: SSR auth check fails on production - add API_INTERNAL_URL
 ```
 
 ---
@@ -19,6 +19,7 @@ e171050 fix: avatar upload not displaying on production
 1. **NEXT_PUBLIC_API_URL** — исправлен с `localhost:3004` на `hddfix.uz:3004`
 2. **Avatar upload** — добавлен volume `uploads_prod` для сохранения аватаров
 3. **API URL** — исправлено удаление порта для production доменов
+4. **SSR Auth** — добавлен `API_INTERNAL_URL` для серверных запросов в Docker (исправляет кнопку "Новый заказ")
 
 ---
 
@@ -91,6 +92,8 @@ CORS_ORIGINS=http://localhost:3003,http://hddfix.uz:3003
 # Web - ВАЖНО: URL должен быть доступен из браузера!
 WEB_PORT=3003
 NEXT_PUBLIC_API_URL=http://hddfix.uz:3004/v1
+# Для SSR запросов внутри Docker (не менять!)
+API_INTERNAL_URL=http://api:3004/v1
 
 # Uploads
 UPLOADS_DIR=/app/uploads
