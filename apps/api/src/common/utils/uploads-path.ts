@@ -2,14 +2,26 @@ import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { resolve, isAbsolute, join } from 'path';
 
 // Serverless detection: Vercel, AWS Lambda, etc.
-const isServerlessEnvironment = () => {
+// NOTE: NODE_ENV=production does NOT mean serverless - Docker containers have writable filesystem
+const isServerlessEnvironment = (): boolean => {
+    // Check for explicit serverless platforms
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.CF_PAGES) {
+        return true;
+    }
+    
+    // Check for serverless working directories
     try {
         const cwd = process.cwd();
-        if (cwd.includes('/var/task') || cwd.includes('/vercel')) return true;
+        if (cwd.includes('/var/task') || cwd.includes('/vercel')) {
+            return true;
+        }
     } catch (e) {}
-    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
+    
+    return false;
 };
 const isServerless = isServerlessEnvironment();
+
+export { isServerless };
 
 // Resolve paths from the repository root so uploads do not depend on process.cwd().
 const API_ROOT_DIR = resolve(__dirname, '..', '..', '..');

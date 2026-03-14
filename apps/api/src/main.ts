@@ -10,16 +10,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { createLogger } from './common/logger/pino.logger';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { getUploadsDir, migrateLegacyUploads } from './common/utils/uploads-path';
-
-// Serverless detection: Vercel, AWS Lambda, etc.
-function isServerless(): boolean {
-    try {
-        const cwd = process.cwd();
-        if (cwd.includes('/var/task') || cwd.includes('/vercel')) return true;
-    } catch (e) {}
-    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.CF_PAGES;
-}
+import { getUploadsDir, migrateLegacyUploads, isServerless } from './common/utils/uploads-path';
 
 async function bootstrap() {
     const logger = createLogger('NestApplication');
