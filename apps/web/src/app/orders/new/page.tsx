@@ -300,9 +300,13 @@ export default function NewOrderPage() {
 
     if (isClientRole && hasContactDiff && contactUpdateDecision === 'update') {
       try {
-        const updatePayload: Record<string, string | undefined> = {
-          full_name: formData.full_name.trim(),
-        };
+        const updatePayload: Record<string, string | undefined> = {};
+        
+        // Only include full_name if valid (min 2 chars)
+        const trimmedName = formData.full_name.trim();
+        if (trimmedName.length >= 2) {
+          updatePayload.full_name = trimmedName;
+        }
         
         // Only include phone if it's a valid E.164 format
         if (phone && E164_PHONE_REGEX.test(phone)) {
@@ -315,13 +319,16 @@ export default function NewOrderPage() {
           updatePayload.telegram = normalizedTelegram;
         }
         
+        // Only make API call if there's something to update
+        if (Object.keys(updatePayload).length > 0) {
         await api.patch('/users/me', updatePayload);
         setProfileSnapshot({
-          full_name: formData.full_name,
+          full_name: trimmedName || formData.full_name,
           phone,
           telegram: normalizedTelegram,
           preferred_language: formData.preferred_language || 'ru',
         });
+        }
       } catch (err: any) {
         console.error('Profile sync failed before order creation', err?.response?.data || err);
         toast.warning('Не удалось обновить профиль. Заказ будет создан с текущими данными аккаунта.');
