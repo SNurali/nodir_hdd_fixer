@@ -717,13 +717,14 @@ export class OrdersService {
         const order = await this.orderRepo.findOne({ where: { id: orderId } });
         if (!order) throw new NotFoundException('Order not found');
 
-        // Logical guard: repair work can be completed only after price approval and repair start.
+        // Logical guard: repair work can be completed only after price approval.
+        // Allow completion from assigned, diagnosing, awaiting_approval, approved, or in_repair statuses.
         if (Number(isCompleted) === 1) {
             if (!order.price_approved_at) {
                 throw new BadRequestException('Нельзя завершить работу до одобрения цены клиентом');
             }
-            if (!['in_repair'].includes(order.status)) {
-                throw new BadRequestException('Нельзя завершить работу до начала ремонта (статус "В работе")');
+            if (!['assigned', 'diagnosing', 'awaiting_approval', 'approved', 'in_repair'].includes(order.status)) {
+                throw new BadRequestException(`Нельзя завершить работу в текущем статусе: "${order.status}"`);
             }
         }
 
