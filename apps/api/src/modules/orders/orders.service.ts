@@ -733,6 +733,7 @@ export class OrdersService {
         });
         if (!detail) throw new NotFoundException('Order detail not found');
 
+        const oldIsCompleted = detail.is_completed;
         detail.is_completed = isCompleted;
         detail.completed_at = isCompleted ? new Date() : null;
         detail.completed_comments = comments || null;
@@ -741,6 +742,39 @@ export class OrdersService {
         // Add lifecycle entry
         const action = isCompleted ? 'Работа выполнена' : 'Отметка выполнения снята';
         await this.addLifecycle(orderId, detailId, action, 1, userId, { actionType: 'item_completed' });
+
+        // Auto-update order status if all details are completed
+        if (isCompleted === 1 && oldIsCompleted !== 1) {
+            const allDetails = await this.detailRepo.find({ where: { order_id: orderId } });
+            const allCompleted = allDetails.every(d => Number(d.is_completed) === 1);
+            
+            if (allCompleted && order.status !== 'ready_for_pickup') {
+                // All work completed - change status to ready_for_pickup
+                order.status = 'ready_for_pickup';
+                order.closed_at = new Date();
+                order.closed_by = userId;
+                await this.orderRepo.save(order);
+                
+                // Add lifecycle entry for order completion
+                await this.addLifecycle(orderId, null, 'Все работы выполнены. Заказ готов к выдаче.', 1, userId, { 
+                    actionType: 'order_completed',
+                    new_status: 'ready_for_pickup'
+                });
+            }
+        } else if (isCompleted === 0 && oldIsCompleted === 1) {
+            // If a detail was marked as incomplete, revert status to in_repair
+            if (order.status === 'ready_for_pickup') {
+                order.status = 'in_repair';
+                order.closed_at = null;
+                order.closed_by = null;
+                await this.orderRepo.save(order);
+                
+                await this.addLifecycle(orderId, null, 'Заказ возвращён в работу', 1, userId, {
+                    actionType: 'order_reopened',
+                    new_status: 'in_repair'
+                });
+            }
+        }
 
         return detail;
     }
