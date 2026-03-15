@@ -119,6 +119,13 @@ export const STATE_TRANSITIONS: StateTransition[] = [
     },
     {
         from: 'approved',
+        to: 'ready_for_pickup',
+        allowedRoles: ['admin', 'operator', 'master'],
+        description: 'Работы завершены напрямую из одобренного статуса',
+        requirements: ['Все работы выполнены'],
+    },
+    {
+        from: 'approved',
         to: 'diagnosing',
         allowedRoles: ['admin', 'operator', 'master'],
         description: 'Вернуться к диагностике',
